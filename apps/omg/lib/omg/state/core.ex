@@ -73,6 +73,8 @@ defmodule OMG.State.Core do
 
   @type utxos() :: %{Utxo.Position.t() => Utxo.t()}
 
+  # FIXME: make generic!
+
   @type deposit_event :: %{deposit: %{amount: non_neg_integer, owner: Crypto.address_t()}}
   @type tx_event :: %{
           tx: Transaction.Recovered.t(),
@@ -244,9 +246,10 @@ defmodule OMG.State.Core do
     new_utxos = UtxoSet.apply_effects(utxos, [], new_utxos_map)
     db_updates_new_utxos = UtxoSet.db_updates([], new_utxos_map)
 
-    event_triggers =
-      deposits
-      |> Enum.map(fn %{owner: owner, amount: amount} -> %{deposit: %{amount: amount, owner: owner}} end)
+    # FIXME: bring this back somehow
+    event_triggers = []
+    # deposits
+    # |> Enum.map(fn %{owner: owner, amount: amount} -> %{deposit: %{amount: amount, owner: owner}} end)
 
     last_deposit_child_blknum = get_last_deposit_child_blknum(deposits, last_deposit_child_blknum)
 
@@ -395,8 +398,16 @@ defmodule OMG.State.Core do
     end)
   end
 
+  # FIXME move to the abstract output implementations instead
   defp deposit_to_utxo(%{blknum: blknum, currency: cur, owner: owner, amount: amount}) do
     Transaction.Payment.new([], [{owner, cur, amount}])
+    |> non_zero_utxos_from(blknum, 0)
+    |> Enum.map(& &1)
+    |> hd()
+  end
+
+  defp deposit_to_utxo(%{blknum: blknum, token: token, owner: owner, token_ids: token_ids}) do
+    Transaction.Payment.new([], [{:nft, owner, token, token_ids}])
     |> non_zero_utxos_from(blknum, 0)
     |> Enum.map(& &1)
     |> hd()

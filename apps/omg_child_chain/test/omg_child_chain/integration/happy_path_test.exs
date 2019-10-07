@@ -38,6 +38,54 @@ defmodule OMG.ChildChain.Integration.HappyPathTest do
   @eth OMG.Eth.RootChain.eth_pseudo_address()
   @interval OMG.Eth.RootChain.get_child_block_interval() |> elem(1)
 
+  @tag fixtures: [:alice, :bob, :omg_child_chain, :alice_deposits]
+  test "deposit, spend, restart, exit etc works fine, ERC721", %{
+    alice: alice,
+    bob: bob,
+    alice_deposits: {deposit_blknum, _}
+  } do
+    # NOTE: this is based on a folk tale, that there have been two deposits before. Normally it would be contract-driven
+    #       but the contracts are absent in the NFT handling in this test
+    nft_deposit_blknum = 3
+
+    # NOTE: we're pretending we're going to make a deposit. Instead of a deposit in the root chain contract, we fake it
+    #       in the child chain directly
+    {:ok, db_updates} =
+      OMG.State.deposit([%{blknum: nft_deposit_blknum, owner: alice.addr, token: <<1::160>>, token_ids: [<<1>>, <<2>>]}])
+
+    :ok = OMG.DB.multi_update(db_updates)
+    # fake deposit done
+
+    raw_tx =
+      Transaction.Payment.new(
+        [
+          {nft_deposit_blknum, 0, 0},
+          # NOTE: we need to pay the fees!
+          {deposit_blknum, 0, 0}
+        ],
+        [
+          {:nft, bob.addr, <<1::160>>, [<<1>>]},
+          {:nft, alice.addr, <<1::160>>, [<<2>>]},
+          {alice.addr, @eth, 9}
+        ]
+      )
+
+    tx = raw_tx |> OMG.TestHelper.sign_encode([alice.priv, alice.priv])
+
+    assert {:ok, %{"blknum" => spend_child_block}} = submit_transaction(tx)
+    assert {:error, %{"code" => "submit:utxo_not_found"}} = submit_transaction(tx)
+
+    raw_bad_tx =
+      Transaction.Payment.new(
+        [{spend_child_block, 0, 1}, {spend_child_block, 0, 2}],
+        [{:nft, alice.addr, <<1::160>>, [<<1>>]}]
+      )
+
+    bad_tx = raw_bad_tx |> OMG.TestHelper.sign_encode([alice.priv, alice.priv])
+
+    assert {:error, %{"code" => "submit:token_ids_list_mismatched"}} = submit_transaction(bad_tx)
+  end
+
   @tag fixtures: [:alice, :bob, :omg_child_chain, :token, :alice_deposits]
   test "deposit, spend, restart, exit etc works fine", %{
     alice: alice,

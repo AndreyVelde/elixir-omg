@@ -96,8 +96,13 @@ defmodule OMG.State.Transaction.Payment do
   # `new/3`
   defp new_input({blknum, txindex, oindex}), do: Utxo.position(blknum, txindex, oindex)
 
+  # FIXME: how to properly do new? is it possible to do nicer?
+  #        NOTE that the gist of new is to provide a convenient and succinct way of instantiating transactions
   defp new_output({owner, currency, amount}),
     do: %Output.FungibleMoreVPToken{owner: owner, currency: currency, amount: amount}
+
+  defp new_output({:nft, owner, token, token_ids}),
+    do: %Output.NFTMoreVPToken{owner: owner, token: token, token_ids: token_ids}
 
   defp reconstruct_inputs(inputs_rlp) do
     with {:ok, inputs} <- parse_inputs(inputs_rlp),
@@ -134,7 +139,9 @@ defmodule OMG.State.Transaction.Payment do
 
   # NOTE: here we predetermine the type of the created output in the creating transaction
   #       I think this makes sense, but rethink later
-  defp parse_output!(output), do: Output.FungibleMoreVPToken.reconstruct(output)
+  # FIXME: see comment near `new` - transaction type creation/reconstructions figure out the output types
+  defp parse_output!([<<2>> | rest]), do: Output.NFTMoreVPToken.reconstruct(rest)
+  defp parse_output!(rest), do: Output.FungibleMoreVPToken.reconstruct(rest)
 end
 
 defimpl OMG.State.Transaction.Protocol, for: OMG.State.Transaction.Payment do
@@ -193,13 +200,29 @@ defimpl OMG.State.Transaction.Protocol, for: OMG.State.Transaction.Payment do
   @spec can_apply?(Transaction.Payment.t(), list(Output.Protocol.t())) ::
           {:ok, map()} | {:error, :amounts_do_not_add_up}
   def can_apply?(%Transaction.Payment{} = tx, outputs_spent) do
-    outputs = Transaction.get_outputs(tx)
+    tx_outputs = Transaction.get_outputs(tx)
+    tx_fungible_outputs = Enum.filter(tx_outputs, &match?(%Output.FungibleMoreVPToken{}, &1))
+    tx_nft_outputs = Enum.filter(tx_outputs, &match?(%Output.NFTMoreVPToken{}, &1))
+    fungible_outputs = Enum.filter(outputs_spent, &match?(%Output.FungibleMoreVPToken{}, &1))
+    nft_outputs = Enum.filter(outputs_spent, &match?(%Output.NFTMoreVPToken{}, &1))
 
+    with {:ok, fees_paid} <- can_apply_fungible?(tx_fungible_outputs, fungible_outputs),
+         :ok <- can_apply_nft?(tx_nft_outputs, nft_outputs),
+         do: {:ok, fees_paid}
+  end
+
+  defp can_apply_fungible?(tx_outputs, outputs_spent) do
     input_amounts_by_currency = get_amounts_by_currency(outputs_spent)
-    output_amounts_by_currency = get_amounts_by_currency(outputs)
+    output_amounts_by_currency = get_amounts_by_currency(tx_outputs)
 
     with :ok <- amounts_add_up?(input_amounts_by_currency, output_amounts_by_currency),
          do: {:ok, fees_paid(input_amounts_by_currency, output_amounts_by_currency)}
+  end
+
+  defp can_apply_nft?(tx_outputs, outputs_spent) do
+    if get_token_ids_by_token(tx_outputs) == get_token_ids_by_token(outputs_spent),
+      do: :ok,
+      else: {:error, :token_ids_list_mismatched}
   end
 
   defp all_inputs_signed?(non_zero_inputs, sigs) do
@@ -236,5 +259,11 @@ defimpl OMG.State.Transaction.Protocol, for: OMG.State.Transaction.Payment do
     end
     |> Enum.all?()
     |> if(do: :ok, else: {:error, :amounts_do_not_add_up})
+  end
+
+  defp get_token_ids_by_token(outputs) do
+    outputs
+    |> Enum.group_by(fn %{token: token} -> token end, fn %{token_ids: token_ids} -> token_ids end)
+    |> Enum.into(%{}, fn {token, ids_lists} -> {token, ids_lists |> Enum.concat() |> Enum.sort()} end)
   end
 end

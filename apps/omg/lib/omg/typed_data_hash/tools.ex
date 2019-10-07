@@ -125,4 +125,10 @@ defmodule OMG.TypedDataHash.Tools do
     |> Enum.join()
     |> Crypto.hash()
   end
+
+  # FIXME: do 712 properly
+  def hash_output(%{} = other_output) do
+    :erlang.term_to_binary(other_output)
+    |> Crypto.hash()
+  end
 end

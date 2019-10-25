@@ -46,12 +46,10 @@ defmodule OMG.Watcher.ExitProcessor.Core.StateInteractionTest do
 
   test "can work with State to determine and notify invalid exits",
        %{processor_empty: processor, state_empty: state, alice: alice} do
-    exiting_position = Utxo.Position.encode(@utxo_pos1)
-
     standard_exit_tx = TestHelper.create_recovered([{1, 0, 0, alice}], @eth, [{alice, 10}])
     processor = processor |> start_se_from(standard_exit_tx, @utxo_pos1)
 
-    assert {:ok, [%Event.InvalidExit{utxo_pos: ^exiting_position}]} =
+    assert {:ok, [%Event.InvalidExit{utxo_pos: @utxo_pos1}]} =
              %ExitProcessor.Request{eth_height_now: 5, blknum_now: @late_blknum}
              |> Core.determine_utxo_existence_to_get(processor)
              |> mock_utxo_exists(state)

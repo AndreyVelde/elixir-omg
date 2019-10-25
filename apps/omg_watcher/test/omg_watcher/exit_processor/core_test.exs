@@ -95,7 +95,7 @@ defmodule OMG.Watcher.ExitProcessor.CoreTest do
       {processor, _} =
         processor
         |> start_se_from(standard_exit_tx, @utxo_pos1, exit_id: 314)
-        |> Core.challenge_exits([%{utxo_pos: Utxo.Position.encode(@utxo_pos1)}])
+        |> Core.challenge_exits([%{utxo_pos: @utxo_pos1}])
 
       assert @utxo_pos1 == Core.exit_key_by_exit_id(processor, 314)
     end
@@ -107,7 +107,7 @@ defmodule OMG.Watcher.ExitProcessor.CoreTest do
       {processor, _} =
         processor
         |> start_ife_from(standard_exit_tx, exit_id: 314)
-        |> Core.challenge_exits([%{utxo_pos: Utxo.Position.encode(@utxo_pos1)}])
+        |> Core.challenge_exits([%{utxo_pos: @utxo_pos1}])
 
       # because not implemented yet
       # TODO fix when implemented

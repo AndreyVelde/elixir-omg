@@ -241,7 +241,6 @@ defmodule OMG.State.Core do
   @doc """
   Spends exited utxos. Accepts either
    - a list of utxo positions (decoded)
-   - a list of utxo positions (encoded)
    - a list of full exit infos containing the utxo positions
    - a list of full exit events (from ethereum listeners) containing the utxo positions
    - a list of IFE started events
@@ -263,11 +262,6 @@ defmodule OMG.State.Core do
   # list of full exit events (from ethereum listeners)
   def exit_utxos([%{call_data: %{utxo_pos: _}} | _] = exit_infos, %Core{} = state) do
     exit_infos |> Enum.map(& &1.call_data) |> exit_utxos(state)
-  end
-
-  # list of utxo positions (encoded)
-  def exit_utxos([encoded_utxo_pos | _] = exit_infos, %Core{} = state) when is_integer(encoded_utxo_pos) do
-    exit_infos |> Enum.map(&Utxo.Position.decode!/1) |> exit_utxos(state)
   end
 
   # list of IFE input/output piggybacked events

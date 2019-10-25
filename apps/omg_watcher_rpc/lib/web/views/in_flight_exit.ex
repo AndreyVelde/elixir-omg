@@ -24,6 +24,7 @@ defmodule OMG.WatcherRPC.Web.View.InFlightExit do
 
   def render("in_flight_exit.json", %{response: in_flight_exit}) do
     in_flight_exit
+    |> Map.update!(:input_utxos_pos, &Enum.map(&1, fn utxo_pos -> Utxo.Position.encode(utxo_pos) end))
     |> Response.serialize()
   end
 

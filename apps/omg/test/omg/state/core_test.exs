@@ -586,18 +586,15 @@ defmodule OMG.State.CoreTest do
 
     assert exit_utxos_response_reference ==
              utxo_pos_exits
-             |> Enum.map(&%{call_data: %{utxo_pos: Utxo.Position.encode(&1)}})
+             |> Enum.map(&%{call_data: %{utxo_pos: &1}})
              |> Core.exit_utxos(state)
 
     assert exit_utxos_response_reference ==
              utxo_pos_exits
-             |> Enum.map(&%{utxo_pos: Utxo.Position.encode(&1)})
+             |> Enum.map(&%{utxo_pos: &1})
              |> Core.exit_utxos(state)
 
-    assert exit_utxos_response_reference ==
-             utxo_pos_exits
-             |> Enum.map(&Utxo.Position.encode/1)
-             |> Core.exit_utxos(state)
+    assert exit_utxos_response_reference == Core.exit_utxos(utxo_pos_exits, state)
 
     piggybacks = [
       %{tx_hash: tx_hash, output_index: 0, omg_data: %{piggyback_type: :output}},

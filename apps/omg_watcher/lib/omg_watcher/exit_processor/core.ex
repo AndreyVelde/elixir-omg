@@ -172,10 +172,8 @@ defmodule OMG.Watcher.ExitProcessor.Core do
     {new_state, db_updates}
   end
 
-  defp get_positions_from_events(exits) do
-    exits
-    |> Enum.map(fn %{utxo_pos: utxo_pos} = _finalization_info -> Utxo.Position.decode!(utxo_pos) end)
-  end
+  defp get_positions_from_events(exits),
+    do: Enum.map(exits, & &1.utxo_pos)
 
   @doc """
   Add new in flight exits from Ethereum events into tracked state.

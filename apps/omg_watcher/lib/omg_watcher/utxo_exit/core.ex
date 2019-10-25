@@ -33,7 +33,7 @@ defmodule OMG.Watcher.UtxoExit.Core do
          :ok <- get_output_by_index(signed_tx, utxo_pos) do
       {:ok,
        %{
-         utxo_pos: Utxo.Position.encode(utxo_pos),
+         utxo_pos: utxo_pos,
          txbytes: Transaction.raw_txbytes(signed_tx),
          proof: Block.inclusion_proof(block, txindex)
        }}
@@ -54,7 +54,7 @@ defmodule OMG.Watcher.UtxoExit.Core do
 
     {:ok,
      %{
-       utxo_pos: Utxo.Position.encode(utxo_pos),
+       utxo_pos: utxo_pos,
        txbytes: Transaction.raw_txbytes(tx),
        proof: Block.inclusion_proof(txs, 0)
      }}

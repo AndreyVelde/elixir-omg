@@ -36,21 +36,21 @@ defmodule OMG.Watcher.ExitProcessor.TestHelper do
   def se_event_status(tx, exiting_pos, opts \\ []) do
     Utxo.position(_, _, oindex) = exiting_pos
     txbytes = Transaction.raw_txbytes(tx)
-    enc_pos = Utxo.Position.encode(exiting_pos)
     owner = tx |> Transaction.get_outputs() |> Enum.at(oindex) |> Map.get(:owner)
     eth_height = Keyword.get(opts, :eth_height, 2)
     exit_id = Keyword.get(opts, :exit_id, @exit_id)
-    call_data = %{utxo_pos: enc_pos, output_tx: txbytes}
+    call_data = %{utxo_pos: exiting_pos, output_tx: txbytes}
 
     event = %{owner: owner, eth_height: eth_height, exit_id: exit_id, call_data: call_data}
 
     exitable = not Keyword.get(opts, :inactive, false)
     # those should be unused so setting to `nil`
-    fake_output_id = enc_pos
+    fake_status_exiting_pos = nil
+    fake_output_id = nil
     amount = nil
     bond_size = nil
 
-    status = Keyword.get(opts, :status) || {exitable, enc_pos, fake_output_id, owner, amount, bond_size}
+    status = Keyword.get(opts, :status) || {exitable, fake_status_exiting_pos, fake_output_id, owner, amount, bond_size}
 
     {event, status}
   end
@@ -79,7 +79,7 @@ defmodule OMG.Watcher.ExitProcessor.TestHelper do
 
   def ife_event(tx, opts \\ []) do
     sigs = Keyword.get(opts, :sigs) || sigs(tx)
-    input_utxos_pos = Transaction.get_inputs(tx) |> Enum.map(&Utxo.Position.encode/1)
+    input_utxos_pos = Transaction.get_inputs(tx)
     input_txs = Keyword.get(opts, :input_txs) || List.duplicate("input_tx", length(input_utxos_pos))
     eth_height = Keyword.get(opts, :eth_height, 2)
 
@@ -95,13 +95,10 @@ defmodule OMG.Watcher.ExitProcessor.TestHelper do
   end
 
   def ife_response(tx, position),
-    do: %{tx_hash: Transaction.raw_txhash(tx), challenge_position: Utxo.Position.encode(position)}
+    do: %{tx_hash: Transaction.raw_txhash(tx), challenge_position: position}
 
   def ife_challenge(tx, comp, opts \\ []) do
-    competitor_position = Keyword.get(opts, :competitor_position)
-
-    competitor_position =
-      if competitor_position, do: Utxo.Position.encode(competitor_position), else: not_included_competitor_pos()
+    competitor_position = Keyword.get(opts, :competitor_position, not_included_competitor_pos())
 
     %{
       tx_hash: Transaction.raw_txhash(tx),
@@ -156,6 +153,6 @@ defmodule OMG.Watcher.ExitProcessor.TestHelper do
       List.duplicate(<<255::8>>, 32)
       |> Enum.reduce(fn val, acc -> val <> acc end)
 
-    long
+    Utxo.Position.decode!(long)
   end
 end

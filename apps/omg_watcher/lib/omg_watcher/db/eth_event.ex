@@ -124,7 +124,7 @@ defmodule OMG.Watcher.DB.EthEvent do
     %{
       root_chain_txhash: root_chain_txhash,
       log_index: log_index,
-      decoded_utxo_position: Utxo.Position.decode!(utxo_pos)
+      decoded_utxo_position: utxo_pos
     }
   end
 

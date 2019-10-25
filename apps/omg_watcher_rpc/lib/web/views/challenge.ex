@@ -19,9 +19,11 @@ defmodule OMG.WatcherRPC.Web.View.Challenge do
 
   use OMG.WatcherRPC.Web, :view
   alias OMG.Utils.HttpRPC.Response
+  alias OMG.Utxo
 
   def render("challenge.json", %{response: challenge}) do
     challenge
+    |> Map.update!(:utxo_pos, &Utxo.Position.encode/1)
     |> Response.serialize()
   end
 end

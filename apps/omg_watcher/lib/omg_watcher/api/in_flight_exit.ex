@@ -18,11 +18,8 @@ defmodule OMG.Watcher.API.InFlightExit do
   """
 
   alias OMG.State.Transaction
-  alias OMG.Utxo
   alias OMG.Watcher.API
   alias OMG.Watcher.ExitProcessor
-
-  require Utxo
 
   @type in_flight_exit() :: %{
           in_flight_tx: binary(),
@@ -101,8 +98,7 @@ defmodule OMG.Watcher.API.InFlightExit do
     |> API.Utxo.compose_utxo_exit()
     |> case do
       {:ok, %{proof: proof, txbytes: txbytes}} ->
-        utxo_pos = Utxo.Position.encode(input_utxo_pos)
-        {:cont, {:ok, {[proof | proofs], [txbytes | txbyteses], [utxo_pos | utxo_positions]}}}
+        {:cont, {:ok, {[proof | proofs], [txbytes | txbyteses], [input_utxo_pos | utxo_positions]}}}
 
       {:error, :utxo_not_found} ->
         {:halt, {:error, :tx_for_input_not_found}}

@@ -21,6 +21,7 @@ defmodule OMG.Watcher.Event do
   alias OMG.Block
   alias OMG.Crypto
   alias OMG.State.Transaction
+  alias OMG.Utxo
 
   @type byzantine_t ::
           OMG.Watcher.Event.InvalidBlock.t()
@@ -125,7 +126,7 @@ defmodule OMG.Watcher.Event do
             amount: pos_integer(),
             currency: binary(),
             owner: binary(),
-            utxo_pos: pos_integer(),
+            utxo_pos: Utxo.Position.t(),
             eth_height: pos_integer(),
             name: atom()
           }
@@ -144,7 +145,7 @@ defmodule OMG.Watcher.Event do
             amount: pos_integer(),
             currency: binary(),
             owner: binary(),
-            utxo_pos: pos_integer(),
+            utxo_pos: Utxo.Position.t(),
             eth_height: pos_integer(),
             name: atom()
           }

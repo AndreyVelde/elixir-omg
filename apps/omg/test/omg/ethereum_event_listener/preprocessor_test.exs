@@ -19,7 +19,12 @@ defmodule OMG.EthereumEventListener.PreprocessorTest do
 
   use ExUnit.Case, async: true
 
+  alias OMG.Utxo
   alias OMG.EthereumEventListener.Preprocessor
+
+  require Utxo
+
+  @encoded_utxo_pos 1_000_000_000_000_000_000_000
 
   describe "apply/1" do
     test "injects input/output information into piggyback-related events" do
@@ -41,6 +46,23 @@ defmodule OMG.EthereumEventListener.PreprocessorTest do
       assert %{omg_data: %{piggyback_type: :output}} =
                Preprocessor.apply(%{event_signature: "InFlightExitOutputWithdrawn(uint160,uint16)"})
     end
+  end
+
+  test "decodes utxo_positions automatically" do
+    assert Utxo.position(_, _, _) =
+             Preprocessor.apply(%{event_signature: "", challenge_position: @encoded_utxo_pos}).challenge_position
+
+    assert Utxo.position(_, _, _) =
+             Preprocessor.apply(%{event_signature: "", competitor_position: @encoded_utxo_pos}).competitor_position
+
+    assert [Utxo.position(_, _, _) = utxo_pos, utxo_pos] =
+             Preprocessor.apply(%{
+               event_signature: "",
+               call_data: %{input_utxos_pos: [@encoded_utxo_pos, @encoded_utxo_pos]}
+             }).call_data.input_utxos_pos
+
+    assert Utxo.position(_, _, _) =
+             Preprocessor.apply(%{event_signature: "", call_data: %{utxo_pos: @encoded_utxo_pos}}).call_data.utxo_pos
   end
 
   test "preserves existing event data" do

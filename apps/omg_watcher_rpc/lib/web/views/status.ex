@@ -18,7 +18,11 @@ defmodule OMG.WatcherRPC.Web.View.Status do
   """
 
   use OMG.WatcherRPC.Web, :view
+
   alias OMG.Utils.HttpRPC.Response
+  alias OMG.Utxo
+
+  require Utxo
 
   def render("status.json", %{response: status}) do
     status
@@ -34,8 +38,13 @@ defmodule OMG.WatcherRPC.Web.View.Status do
   end
 
   defp format_byzantine_event(%{name: name} = event) do
-    %{event: name, details: event}
+    %{event: name, details: format_utxo_pos(event)}
   end
+
+  defp format_utxo_pos(%{utxo_pos: Utxo.position(_, _, _) = utxo_pos} = event),
+    do: %{event | utxo_pos: Utxo.Position.encode(utxo_pos)}
+
+  defp format_utxo_pos(event_without_utxo_pos), do: event_without_utxo_pos
 
   defp format_synced_height({name, height}) do
     %{service: name, height: height}

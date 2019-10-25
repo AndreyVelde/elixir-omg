@@ -19,7 +19,6 @@ defmodule OMG.Watcher.DB.EthEventTest do
 
   alias OMG.Crypto
   alias OMG.Utxo
-  alias OMG.Utxo.Position
   alias OMG.Watcher.DB
 
   require Utxo
@@ -208,8 +207,6 @@ defmodule OMG.Watcher.DB.EthEventTest do
     expected_txindex = 0
     expected_oindex = 0
 
-    expected_utxo_encoded_position = Position.encode(Utxo.position(expected_blknum, expected_txindex, expected_oindex))
-
     expected_deposit_root_chain_txhash = Crypto.hash(<<5::256>>)
     expected_exit_root_chain_txhash = Crypto.hash(<<6::256>>)
 
@@ -230,7 +227,7 @@ defmodule OMG.Watcher.DB.EthEventTest do
     assert :ok =
              DB.EthEvent.insert_exits!([
                %{
-                 call_data: %{utxo_pos: expected_utxo_encoded_position},
+                 call_data: %{utxo_pos: Utxo.position(expected_blknum, expected_txindex, expected_oindex)},
                  root_chain_txhash: expected_exit_root_chain_txhash,
                  log_index: expected_log_index
                }
@@ -258,12 +255,12 @@ defmodule OMG.Watcher.DB.EthEventTest do
       %{
         root_chain_txhash: Crypto.hash(<<1000::256>>),
         log_index: 1,
-        call_data: %{utxo_pos: Utxo.Position.encode(Utxo.position(1, 0, 0))}
+        call_data: %{utxo_pos: Utxo.position(1, 0, 0)}
       },
       %{
         root_chain_txhash: Crypto.hash(<<1000::256>>),
         log_index: 1,
-        call_data: %{utxo_pos: Utxo.Position.encode(Utxo.position(1, 0, 0))}
+        call_data: %{utxo_pos: Utxo.position(1, 0, 0)}
       }
     ]
 

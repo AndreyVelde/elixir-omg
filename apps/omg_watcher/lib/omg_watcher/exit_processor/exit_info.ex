@@ -58,8 +58,8 @@ defmodule OMG.Watcher.ExitProcessor.ExitInfo do
   def new_key(_contract_status, event),
     do: utxo_pos_for(event)
 
-  defp utxo_pos_for(%{call_data: %{utxo_pos: utxo_pos_enc}} = _event),
-    do: Utxo.Position.decode!(utxo_pos_enc)
+  defp utxo_pos_for(%{call_data: %{utxo_pos: utxo_pos}} = _event),
+    do: utxo_pos
 
   defp do_new(contract_status, fields) do
     fields = Keyword.put_new(fields, :is_active, parse_contract_exit_status(contract_status))
@@ -67,7 +67,7 @@ defmodule OMG.Watcher.ExitProcessor.ExitInfo do
   end
 
   def make_event_data(type, position, %__MODULE__{} = exit_info) do
-    struct(type, exit_info |> Map.from_struct() |> Map.put(:utxo_pos, Utxo.Position.encode(position)))
+    struct(type, exit_info |> Map.from_struct() |> Map.put(:utxo_pos, position))
   end
 
   # NOTE: we have no migrations, so we handle data compatibility here (make_db_update/1 and from_db_kv/1), OMG-421

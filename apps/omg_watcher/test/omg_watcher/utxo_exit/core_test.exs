@@ -33,7 +33,6 @@ defmodule OMG.Watcher.UtxoExit.CoreTest do
   describe "compose_deposit_standard_exit/1" do
     test "creates deposit exit", %{alice: alice} do
       position = Utxo.position(1003, 0, 0)
-      encode_utxo = position |> Utxo.Position.encode()
 
       fake_utxo_db_kv =
         {OMG.InputPointer.Protocol.to_db_key(position),
@@ -47,7 +46,7 @@ defmodule OMG.Watcher.UtxoExit.CoreTest do
 
       assert {:ok,
               %{
-                utxo_pos: ^encode_utxo,
+                utxo_pos: ^position,
                 txbytes: txbytes,
                 proof: proof
               }} = Core.compose_deposit_standard_exit({:ok, fake_utxo_db_kv})
@@ -67,7 +66,6 @@ defmodule OMG.Watcher.UtxoExit.CoreTest do
       tx_exit = TestHelper.create_recovered([{1_000, 1, 0, alice}], @eth, [{alice, 10}])
       tx_exit_raw_tx_bytes = Transaction.raw_txbytes(tx_exit)
       position = Utxo.position(blknum, 1, 0)
-      encode_utxo = position |> Utxo.Position.encode()
 
       block =
         [
@@ -82,7 +80,7 @@ defmodule OMG.Watcher.UtxoExit.CoreTest do
               %{
                 proof: proof,
                 txbytes: ^tx_exit_raw_tx_bytes,
-                utxo_pos: ^encode_utxo
+                utxo_pos: ^position
               }} = Core.compose_block_standard_exit(block, position)
 
       # hash byte_size * merkle tree depth

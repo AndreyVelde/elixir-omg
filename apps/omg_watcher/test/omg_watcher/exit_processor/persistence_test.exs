@@ -60,13 +60,13 @@ defmodule OMG.Watcher.ExitProcessor.PersistenceTest do
            owner: alice.addr,
            eth_height: 2,
            exit_id: 1,
-           call_data: %{utxo_pos: Utxo.Position.encode(@utxo_pos1), output_tx: txbytes1}
+           call_data: %{utxo_pos: @utxo_pos1, output_tx: txbytes1}
          },
          %{
            owner: alice.addr,
            eth_height: 4,
            exit_id: 2,
-           call_data: %{utxo_pos: Utxo.Position.encode(@utxo_pos2), output_tx: txbytes2}
+           call_data: %{utxo_pos: @utxo_pos2, output_tx: txbytes2}
          }
        ],
        [
@@ -133,7 +133,7 @@ defmodule OMG.Watcher.ExitProcessor.PersistenceTest do
 
     challenge = %{
       tx_hash: hash,
-      competitor_position: Utxo.Position.encode(@utxo_pos2),
+      competitor_position: @utxo_pos2,
       call_data: %{
         competing_tx: Transaction.raw_txbytes(competing_tx),
         competing_tx_input_index: 0,
@@ -214,8 +214,7 @@ defmodule OMG.Watcher.ExitProcessor.PersistenceTest do
   end
 
   defp persist_challenge_exits(processor, utxo_positions, db_pid) do
-    {processor, db_updates} =
-      Core.challenge_exits(processor, utxo_positions |> Enum.map(&%{utxo_pos: Utxo.Position.encode(&1)}))
+    {processor, db_updates} = Core.challenge_exits(processor, Enum.map(utxo_positions, &%{utxo_pos: &1}))
 
     persist_common(processor, db_updates, db_pid)
   end

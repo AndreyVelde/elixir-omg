@@ -271,38 +271,6 @@ defmodule OMG.State.Core do
     exit_infos |> Enum.map(&Utxo.Position.decode!/1) |> exit_utxos(state)
   end
 
-  # list of IFE input/output piggybacked events
-  def exit_utxos([%{call_data: %{in_flight_tx: _}} | _] = in_flight_txs, %Core{} = state) do
-    _ = Logger.info("Recognized exits from IFE starts #{inspect(in_flight_txs)}")
-
-    in_flight_txs
-    |> Enum.flat_map(fn %{call_data: %{in_flight_tx: tx_bytes}} ->
-      {:ok, tx} = Transaction.decode(tx_bytes)
-      Transaction.get_inputs(tx)
-    end)
-    |> exit_utxos(state)
-  end
-
-  # list of IFE input/output piggybacked events
-  def exit_utxos([%{tx_hash: _} | _] = piggybacks, state) do
-    _ = Logger.info("Recognized exits from piggybacks #{inspect(piggybacks)}")
-
-    {piggybacks_of_unknown_utxos, piggybacks_of_known_utxos} =
-      piggybacks
-      |> Enum.map(&find_utxo_matching_piggyback(&1, state))
-      |> Enum.zip(piggybacks)
-      |> Enum.split_with(fn {utxo, _} -> utxo == nil end)
-
-    {:ok, {db_updates, {valid, invalid}}, state} =
-      piggybacks_of_known_utxos
-      |> Enum.map(fn {{position, _}, _} -> position end)
-      |> exit_utxos(state)
-
-    {_unknown_piggybacks_positions, unknown_piggybacks} = Enum.unzip(piggybacks_of_unknown_utxos)
-
-    {:ok, {db_updates, {valid, invalid ++ unknown_piggybacks}}, state}
-  end
-
   # list of utxo positions (decoded)
   def exit_utxos([Utxo.position(_, _, _) | _] = exiting_utxos, %Core{utxos: utxos} = state) do
     _ = Logger.info("Recognized exits #{inspect(exiting_utxos)}")

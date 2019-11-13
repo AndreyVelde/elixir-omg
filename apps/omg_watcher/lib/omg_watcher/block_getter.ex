@@ -111,9 +111,10 @@ defmodule OMG.Watcher.BlockGetter do
 
     case Core.validate_executions(tx_exec_results, block_application, state) do
       {:ok, state} ->
-        block_application
-        |> Core.ensure_block_imported_once(state)
-        |> Enum.each(&DB.Transaction.update_with/1)
+        # FIXME: Postgres turned off brutally. See commit where this fixme got in and undo
+        # block_application
+        # |> Core.ensure_block_imported_once(state)
+        # |> Enum.each(&DB.Transaction.update_with/1)
 
         {:noreply, state, {:continue, {:apply_block_step, :run_block_download_task, block_application}}}
 

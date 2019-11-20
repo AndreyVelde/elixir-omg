@@ -70,8 +70,8 @@ defmodule OMG.Watcher.ExitProcessor.KnownTx do
   @spec group_txs_by_input(Enumerable.t()) :: known_txs_by_input_t
   def group_txs_by_input(all_known_txs) do
     all_known_txs
-    |> Stream.map(&{&1, Transaction.get_inputs(&1.signed_tx)})
-    |> Stream.flat_map(fn {known_tx, inputs} -> for input <- inputs, do: {input, known_tx} end)
+    |> Enum.map(&{&1, Transaction.get_inputs(&1.signed_tx)})
+    |> Enum.flat_map(fn {known_tx, inputs} -> for input <- inputs, do: {input, known_tx} end)
     |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
   end
 
@@ -79,23 +79,23 @@ defmodule OMG.Watcher.ExitProcessor.KnownTx do
   # from outside of blocks (TxAppendix)
   def get_all_from_blocks_appendix(blocks, %Core{} = processor) do
     [get_all_from(blocks), get_all_from(processor)]
-    |> Stream.concat()
+    |> Enum.concat()
     |> group_txs_by_input()
   end
 
   defp get_all_from(%Core{} = processor) do
     TxAppendix.get_all(processor)
-    |> Stream.map(&new/1)
+    |> Enum.map(&new/1)
   end
 
   defp get_all_from(%Block{transactions: txs, number: blknum}) do
     txs
-    |> Stream.map(&Transaction.Signed.decode!/1)
-    |> Stream.with_index()
-    |> Stream.map(fn {signed, txindex} -> new(signed, Utxo.position(blknum, txindex, 0)) end)
+    |> Enum.map(&Transaction.Signed.decode!/1)
+    |> Enum.with_index()
+    |> Enum.map(fn {signed, txindex} -> new(signed, Utxo.position(blknum, txindex, 0)) end)
   end
 
-  defp get_all_from(blocks) when is_list(blocks), do: blocks |> sort_blocks() |> Stream.flat_map(&get_all_from/1)
+  defp get_all_from(blocks) when is_list(blocks), do: blocks |> sort_blocks() |> Enum.flat_map(&get_all_from/1)
 
   # we're sorting the blocks by their blknum here, because we wan't oldest (best) competitors first always
   defp sort_blocks(blocks), do: blocks |> Enum.sort_by(fn %Block{number: number} -> number end)

@@ -30,7 +30,7 @@ defmodule OMG.Watcher.ExitProcessor.TxAppendix do
   def get_all(%ExitProcessor.Core{in_flight_exits: ifes, competitors: competitors}) do
     ifes
     |> Map.values()
-    |> Stream.concat(Map.values(competitors))
-    |> Stream.map(&Map.get(&1, :tx))
+    |> Enum.concat(Map.values(competitors))
+    |> Enum.map(&Map.get(&1, :tx))
   end
 end

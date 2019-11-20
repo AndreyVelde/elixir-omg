@@ -85,15 +85,13 @@ defmodule OMG.TypedDataHash.Tools do
 
     input_hashes =
       inputs
-      |> Stream.map(&hash_input/1)
-      |> Stream.concat(Stream.cycle([empty_input_hash]))
-      |> Enum.take(Transaction.Payment.max_inputs())
+      |> Enum.map(&hash_input/1)
+      |> pad_with(empty_input_hash, Transaction.Payment.max_inputs())
 
     output_hashes =
       outputs
-      |> Stream.map(&hash_output/1)
-      |> Stream.concat(Stream.cycle([empty_output_hash]))
-      |> Enum.take(Transaction.Payment.max_outputs())
+      |> Enum.map(&hash_output/1)
+      |> pad_with(empty_output_hash, Transaction.Payment.max_outputs())
 
     [
       @transaction_type_hash,
@@ -133,4 +131,7 @@ defmodule OMG.TypedDataHash.Tools do
     |> Enum.join()
     |> Crypto.hash()
   end
+
+  defp pad_with(enumerable, padder, amount),
+    do: Enum.concat(enumerable, List.duplicate(padder, amount - Enum.count(enumerable)))
 end

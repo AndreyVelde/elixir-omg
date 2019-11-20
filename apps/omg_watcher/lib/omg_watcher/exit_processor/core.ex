@@ -483,7 +483,7 @@ defmodule OMG.Watcher.ExitProcessor.Core do
   defp get_ifes_to_piggyback(%__MODULE__{in_flight_exits: ifes}) do
     ifes
     |> Map.values()
-    |> Stream.filter(fn %InFlightExitInfo{is_active: is_active, tx_seen_in_blocks_at: seen} -> is_active && !seen end)
+    |> Stream.filter(&InFlightExitInfo.available_for_piggyback?/1)
     |> Enum.uniq_by(fn %InFlightExitInfo{tx: signed_tx} -> signed_tx end)
   end
 
@@ -558,13 +558,19 @@ defmodule OMG.Watcher.ExitProcessor.Core do
       |> Enum.map(fn {hash, ife} ->
         {hash, ife, KnownTx.find_tx_in_blocks(hash, positions_by_tx_hash, blocks_by_blknum)}
       end)
-      |> Enum.filter(fn {_hash, _ife, maybepos} -> maybepos != nil end)
-      |> Enum.into(ifes, fn {hash, ife, {block, position}} ->
-        proof = Block.inclusion_proof(block, Utxo.Position.txindex(position))
-        {hash, %InFlightExitInfo{ife | tx_seen_in_blocks_at: {position, proof}}}
-      end)
+      |> Enum.into(ifes, &apply_block_searching/1)
 
     %{state | in_flight_exits: new_ifes}
+  end
+
+  # FIXME MOVE to the module
+  defp apply_block_searching({hash, ife, nil}) do
+    {hash, %InFlightExitInfo{ife | tx_seen_in_blocks_at: :ife_tx_inputs_double_spent}}
+  end
+
+  defp apply_block_searching({hash, ife, {block, position}}) do
+    proof = Block.inclusion_proof(block, Utxo.Position.txindex(position))
+    {hash, %InFlightExitInfo{ife | tx_seen_in_blocks_at: {position, proof}}}
   end
 
   defp zero_address?(address) do

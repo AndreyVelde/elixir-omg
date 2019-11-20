@@ -177,9 +177,11 @@ defmodule OMG.Watcher.ExitProcessor.Finalizations do
     [input_position]
   end
 
+  # FIXME: move to ife info module?
   defp get_exiting_positions(ife, output_index, :output) do
     case ife.tx_seen_in_blocks_at do
       nil -> []
+      :ife_tx_inputs_double_spent -> []
       {Utxo.position(blknum, txindex, _), _proof} -> [Utxo.position(blknum, txindex, output_index)]
     end
   end

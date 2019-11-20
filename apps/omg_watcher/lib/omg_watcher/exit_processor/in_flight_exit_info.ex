@@ -80,7 +80,7 @@ defmodule OMG.Watcher.ExitProcessor.InFlightExitInfo do
           # nil value means that it was not included
           # OR we haven't processed it yet
           # OR we have found and filled this data, but haven't persisted it later
-          tx_seen_in_blocks_at: {Utxo.Position.t(), inclusion_proof :: binary()} | nil,
+          tx_seen_in_blocks_at: {Utxo.Position.t(), inclusion_proof :: binary()} | nil | :ife_tx_inputs_double_spent,
           timestamp: non_neg_integer(),
           contract_id: ife_contract_id(),
           oldest_competitor: Utxo.Position.t() | nil,
@@ -331,6 +331,7 @@ defmodule OMG.Watcher.ExitProcessor.InFlightExitInfo do
 
   @spec get_piggybacked_outputs_positions(t()) :: [Utxo.Position.t()]
   def get_piggybacked_outputs_positions(%__MODULE__{tx_seen_in_blocks_at: nil}), do: []
+  def get_piggybacked_outputs_positions(%__MODULE__{tx_seen_in_blocks_at: :ife_tx_inputs_double_spent}), do: []
 
   def get_piggybacked_outputs_positions(%__MODULE__{tx_seen_in_blocks_at: {Utxo.position(blknum, txindex, _), _}} = ife) do
     @outputs_index_range
@@ -404,8 +405,15 @@ defmodule OMG.Watcher.ExitProcessor.InFlightExitInfo do
     %{ife | is_active: true}
   end
 
-  def should_be_seeked_in_blocks?(%__MODULE__{} = ife),
-    do: ife.is_active && ife.tx_seen_in_blocks_at == nil
+  def available_for_piggyback?(%__MODULE__{is_active: false}), do: false
+  def available_for_piggyback?(%__MODULE__{tx_seen_in_blocks_at: nil}), do: true
+  def available_for_piggyback?(%__MODULE__{tx_seen_in_blocks_at: :ife_tx_inputs_double_spent}), do: true
+  def available_for_piggyback?(%__MODULE__{tx_seen_in_blocks_at: {_position, _proof}}), do: false
+
+  def should_be_seeked_in_blocks?(%__MODULE__{is_active: false}), do: false
+  def should_be_seeked_in_blocks?(%__MODULE__{tx_seen_in_blocks_at: nil}), do: true
+  def should_be_seeked_in_blocks?(%__MODULE__{tx_seen_in_blocks_at: :ife_tx_inputs_double_spent}), do: false
+  def should_be_seeked_in_blocks?(%__MODULE__{tx_seen_in_blocks_at: {Utxo.position(_, _, _), _proof}}), do: false
 
   @doc """
   First, it determines if it is challenged at all - if it isn't returns false.
@@ -416,6 +424,7 @@ defmodule OMG.Watcher.ExitProcessor.InFlightExitInfo do
   @spec is_invalidly_challenged?(t()) :: boolean()
   def is_invalidly_challenged?(%__MODULE__{is_canonical: true}), do: false
   def is_invalidly_challenged?(%__MODULE__{tx_seen_in_blocks_at: nil}), do: false
+  def is_invalidly_challenged?(%__MODULE__{tx_seen_in_blocks_at: :ife_tx_inputs_double_spent}), do: false
 
   def is_invalidly_challenged?(%__MODULE__{
         tx_seen_in_blocks_at: {Utxo.position(_, _, _) = seen_in_pos, _proof},
@@ -430,6 +439,12 @@ defmodule OMG.Watcher.ExitProcessor.InFlightExitInfo do
   @spec is_viable_competitor?(t(), Utxo.Position.t() | nil) :: boolean()
   def is_viable_competitor?(
         %__MODULE__{tx_seen_in_blocks_at: nil, oldest_competitor: oldest_competitor_pos},
+        competitor_pos
+      ),
+      do: do_is_viable_competitor?(nil, oldest_competitor_pos, competitor_pos)
+
+  def is_viable_competitor?(
+        %__MODULE__{tx_seen_in_blocks_at: :ife_tx_inputs_double_spent, oldest_competitor: oldest_competitor_pos},
         competitor_pos
       ),
       do: do_is_viable_competitor?(nil, oldest_competitor_pos, competitor_pos)

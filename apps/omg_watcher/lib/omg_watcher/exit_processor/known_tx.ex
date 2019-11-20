@@ -61,14 +61,12 @@ defmodule OMG.Watcher.ExitProcessor.KnownTx do
     end
   end
 
-  @doc """
-  Groups the spending transactions by the input spent, preserves the sorting for every input.
-
-  Expects an `Enumberable` of `KnownTx`s
-  Duplicates are possible.
-  """
+  # Groups the spending transactions by the input spent, preserves the sorting for every input.
+  #
+  # Expects an `Enumberable` of `KnownTx`s
+  # Duplicates are possible.
   @spec group_txs_by_input(Enumerable.t()) :: known_txs_by_input_t
-  def group_txs_by_input(all_known_txs) do
+  defp group_txs_by_input(all_known_txs) do
     all_known_txs
     |> Enum.map(&{&1, Transaction.get_inputs(&1.signed_tx)})
     |> Enum.flat_map(fn {known_tx, inputs} -> for input <- inputs, do: {input, known_tx} end)

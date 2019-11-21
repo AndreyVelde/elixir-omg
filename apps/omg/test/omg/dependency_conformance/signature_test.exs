@@ -25,6 +25,7 @@ defmodule OMG.DependencyConformance.SignatureTest do
   alias Support.Deployer
   alias Support.DevNode
 
+  use PropCheck
   use ExUnit.Case, async: false
 
   @moduletag :integration
@@ -126,8 +127,58 @@ defmodule OMG.DependencyConformance.SignatureTest do
       verify(contract, tx)
     end
 
+    @tag :property
+    property "valid tx signhash the same", [1000, :verbose, max_size: 100, constraint_tries: 100_000], %{
+      contract: contract
+    } do
+      input_tuple =
+        let [blknum <- non_neg_integer(), txindex <- non_neg_integer(), oindex <- non_neg_integer()] do
+          {blknum, txindex, oindex}
+        end
+
+      # FIXME: revisit the case of negative amounts, funny things happen
+      output_tuple =
+        let [owner <- binary(20), currency <- binary(20), amount <- non_neg_integer()] do
+          {owner, currency, amount}
+        end
+
+      metadata = let(b <- binary(32), do: b)
+
+      payment_tx =
+        let [inputs <- list(input_tuple), outputs <- list(output_tuple), meta <- metadata] do
+          Transaction.Payment.new(inputs, outputs, meta)
+        end
+
+      forall tx <- payment_tx do
+        verify(contract, tx)
+      end
+    end
+
+    @tag :property
+    property "arbitrary binaries don't decode",
+             [1000, :verbose, max_size: 100, constraint_tries: 100_000],
+             %{contract: contract} do
+      elixir_decoding_errors = [{:error, :malformed_transaction_rlp}, {:error, :malformed_transaction}]
+
+      solidity_decoding_errors = [
+        "Item is not a list",
+        "Invalid encoding of transaction",
+        "Decoded RLP length for list is invalid",
+        "Invalid RLP encoding",
+        "Invalid decoded length of RLP item found during counting items in a list"
+      ]
+
+      forall some_binary <- binary() do
+        Transaction.decode(some_binary) in elixir_decoding_errors &&
+          (solidity_hash(contract, some_binary) |> get_reason_from_call()) in solidity_decoding_errors
+      end
+    end
+
+    defp get_reason_from_call({:error, error_body}),
+      do: error_body["data"] |> Map.values() |> Enum.at(0) |> Access.get("reason")
+
     defp verify(contract, tx) do
-      assert solidity_hash(contract, tx) == elixir_hash(tx)
+      assert solidity_hash!(contract, tx) == elixir_hash(tx)
     end
   end
 
@@ -154,19 +205,22 @@ defmodule OMG.DependencyConformance.SignatureTest do
     defp verify_distinct(contract, tx1, tx2) do
       # FIXME: commented now, because they're failing anyway (covered in other tests). Decide how exactly we assert here
       # just sanity checks, the solidity vs elixir testing is in the other section
-      # assert solidity_hash(contract, tx1) == elixir_hash(tx1)
-      # assert solidity_hash(contract, tx2) == elixir_hash(tx2)
-      assert solidity_hash(contract, tx1) != solidity_hash(contract, tx2)
+      # assert solidity_hash!(contract, tx1) == elixir_hash(tx1)
+      # assert solidity_hash!(contract, tx2) == elixir_hash(tx2)
+      assert solidity_hash!(contract, tx1) != solidity_hash!(contract, tx2)
       assert elixir_hash(tx1) != elixir_hash(tx2)
     end
   end
 
-  defp solidity_hash(contract, tx) do
-    {:ok, solidity_hash} =
-      Eth.call_contract(contract, "hashTx(address,bytes)", [contract, Transaction.raw_txbytes(tx)], [{:bytes, 32}])
-
+  defp solidity_hash!(contract, tx) do
+    {:ok, solidity_hash} = solidity_hash(contract, tx)
     solidity_hash
   end
+
+  defp solidity_hash(contract, %{} = tx), do: solidity_hash(contract, Transaction.raw_txbytes(tx))
+
+  defp solidity_hash(contract, encoded_tx) when is_binary(encoded_tx),
+    do: Eth.call_contract(contract, "hashTx(address,bytes)", [contract, encoded_tx], [{:bytes, 32}])
 
   defp elixir_hash(%Transaction.Signed{raw_tx: tx}), do: OMG.TypedDataHash.hash_struct(tx)
   defp elixir_hash(tx), do: OMG.TypedDataHash.hash_struct(tx)

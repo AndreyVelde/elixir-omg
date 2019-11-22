@@ -77,7 +77,9 @@ defmodule OMG.Watcher.ExitProcessor.StandardExit do
 
     tx_appendix = TxAppendix.get_all(state)
     exits_invalid_by_ife = get_invalid_exits_based_on_ifes(active_exits, tx_appendix)
-    invalid_exits = active_exits |> Map.take(invalid_exit_positions) |> Enum.concat(exits_invalid_by_ife) |> Enum.uniq()
+
+    invalid_exits =
+      active_exits |> Map.take(invalid_exit_positions) |> Enum.concat(exits_invalid_by_ife) |> :lists.usort()
 
     # get exits which are still invalid and after the SLA margin
     late_invalid_exits =

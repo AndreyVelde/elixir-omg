@@ -76,7 +76,7 @@ defmodule OMG.Watcher.ExitProcessor.Canonicity do
       InFlightExitInfo.is_viable_competitor?(ife, utxo_pos)
     end)
     |> Enum.map(fn {ife, _double_spend} -> Transaction.raw_txbytes(ife.tx) end)
-    |> Enum.uniq()
+    |> :lists.usort()
     |> Enum.map(fn txbytes -> %Event.NonCanonicalIFE{txbytes: txbytes} end)
   end
 
@@ -87,7 +87,7 @@ defmodule OMG.Watcher.ExitProcessor.Canonicity do
     |> Map.values()
     |> Enum.filter(&InFlightExitInfo.is_invalidly_challenged?/1)
     |> Enum.map(&Transaction.raw_txbytes(&1.tx))
-    |> Enum.uniq()
+    |> :lists.usort()
     |> Enum.map(fn txbytes -> %Event.InvalidIFEChallenge{txbytes: txbytes} end)
   end
 

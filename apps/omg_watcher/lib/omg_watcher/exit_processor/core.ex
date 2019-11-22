@@ -401,7 +401,7 @@ defmodule OMG.Watcher.ExitProcessor.Core do
     warn? = !Enum.empty?(not_founds)
     _ = if warn?, do: Logger.warn("UTXO doesn't exists but no spend registered (spent in exit?) #{inspect(not_founds)}")
 
-    Enum.uniq(blknums_to_get)
+    :lists.usort(blknums_to_get)
   end
 
   @doc """

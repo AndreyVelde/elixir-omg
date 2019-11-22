@@ -36,6 +36,7 @@ defmodule OMG.Watcher.Mixfile do
       {:ecto_sql, "~> 3.1"},
       {:telemetry, "~> 0.4.0"},
       {:spandex_ecto, "~> 0.6.0"},
+      {:memoize, "~> 1.2"},
       # there's no apparent reason why libsecp256k1, spandex and distillery need to be included as dependencies
       # to this umbrella application apart from mix ecto.gen.migration not working, so here they are, copied from
       # the parent (main) mix.exs

@@ -88,13 +88,7 @@ defmodule OMG.Watcher.ExitProcessor.KnownTx do
     |> Enum.map(&new/1)
   end
 
-  defp get_all_from(%Block{transactions: txs, number: blknum}) do
-    txs
-    |> Enum.map(&Transaction.Signed.decode!/1)
-    |> Enum.with_index()
-    |> Enum.map(fn {signed, txindex} -> new(signed, Utxo.position(blknum, txindex, 0)) end)
-  end
-
+  defp get_all_from(%Block{} = block), do: memoized_get_all_from(block)
   defp get_all_from(blocks) when is_list(blocks), do: blocks |> sort_blocks() |> Enum.flat_map(&get_all_from/1)
 
   # we're sorting the blocks by their blknum here, because we wan't oldest (best) competitors first always
@@ -106,5 +100,15 @@ defmodule OMG.Watcher.ExitProcessor.KnownTx do
       is_nil(utxo_pos2) -> true
       true -> Utxo.Position.encode(utxo_pos1) < Utxo.Position.encode(utxo_pos2)
     end
+  end
+
+  # memoized functions. These are called repeatedly for the same value so memoizing helps a lot
+  use Memoize
+
+  defmemop memoized_get_all_from(%Block{transactions: txs, number: blknum}) do
+    txs
+    |> Enum.map(&Transaction.Signed.decode!/1)
+    |> Enum.with_index()
+    |> Enum.map(fn {signed, txindex} -> new(signed, Utxo.position(blknum, txindex, 0)) end)
   end
 end

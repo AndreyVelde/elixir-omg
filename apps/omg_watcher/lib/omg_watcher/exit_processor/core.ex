@@ -484,7 +484,6 @@ defmodule OMG.Watcher.ExitProcessor.Core do
     ifes
     |> Map.values()
     |> Enum.filter(&InFlightExitInfo.available_for_piggyback?/1)
-    |> Enum.uniq_by(fn %InFlightExitInfo{tx: signed_tx} -> signed_tx end)
   end
 
   @spec prepare_available_piggyback(InFlightExitInfo.t()) :: list(Event.PiggybackAvailable.t())

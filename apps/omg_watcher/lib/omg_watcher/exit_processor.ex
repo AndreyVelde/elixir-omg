@@ -49,7 +49,7 @@ defmodule OMG.Watcher.ExitProcessor do
   def new_exits([]), do: {:ok, []}
 
   def new_exits(exits) do
-    GenServer.call(__MODULE__, {:new_exits, exits})
+    GenServer.call(__MODULE__, {:new_exits, exits}, 20_000)
   end
 
   @doc """
@@ -60,7 +60,7 @@ defmodule OMG.Watcher.ExitProcessor do
   def new_in_flight_exits([]), do: {:ok, []}
 
   def new_in_flight_exits(in_flight_exit_started_events) do
-    GenServer.call(__MODULE__, {:new_in_flight_exits, in_flight_exit_started_events})
+    GenServer.call(__MODULE__, {:new_in_flight_exits, in_flight_exit_started_events}, 20_000)
   end
 
   @doc """
@@ -150,7 +150,7 @@ defmodule OMG.Watcher.ExitProcessor do
   but under unchanged conditions, it should have unchanged behavior from POV of an outside caller.
   """
   def check_validity do
-    GenServer.call(__MODULE__, :check_validity)
+    GenServer.call(__MODULE__, :check_validity, 20_000)
   end
 
   @doc """

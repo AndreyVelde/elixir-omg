@@ -557,7 +557,8 @@ defmodule OMG.Watcher.ExitProcessor.Core do
       |> Enum.map(fn {hash, ife} ->
         {hash, ife, KnownTx.find_tx_in_blocks(hash, positions_by_tx_hash, blocks_by_blknum)}
       end)
-      |> Enum.into(ifes, &apply_block_searching/1)
+      |> Task.async_stream(&apply_block_searching/1, timeout: 30_000)
+      |> Enum.into(ifes, fn {:ok, result} -> result end)
 
     %{state | in_flight_exits: new_ifes}
   end

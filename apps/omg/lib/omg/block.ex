@@ -75,13 +75,18 @@ defmodule OMG.Block do
   """
   @spec inclusion_proof(t() | list(Transaction.Signed.tx_bytes()), non_neg_integer()) :: binary()
   def inclusion_proof(transactions, txindex) when is_list(transactions) do
-    txs_hashes =
-      transactions
-      |> Enum.map(&Transaction.Signed.decode!/1)
-      |> Enum.map(&Transaction.raw_txhash/1)
-
-    Merkle.create_tx_proof(txs_hashes, txindex)
+    transactions
+    |> Enum.map(&memoized_decode_hash/1)
+    |> Merkle.create_tx_proof(txindex)
   end
 
   def inclusion_proof(%__MODULE__{transactions: transactions}, txindex), do: inclusion_proof(transactions, txindex)
+
+  use Memoize
+
+  defmemop memoized_decode_hash(signed_txbytes) do
+    signed_txbytes
+    |> Transaction.Signed.decode!()
+    |> Transaction.raw_txhash()
+  end
 end

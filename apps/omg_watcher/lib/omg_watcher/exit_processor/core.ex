@@ -483,7 +483,7 @@ defmodule OMG.Watcher.ExitProcessor.Core do
   defp get_ifes_to_piggyback(%__MODULE__{in_flight_exits: ifes}) do
     ifes
     |> Map.values()
-    |> Stream.filter(&InFlightExitInfo.available_for_piggyback?/1)
+    |> Enum.filter(&InFlightExitInfo.available_for_piggyback?/1)
     |> Enum.uniq_by(fn %InFlightExitInfo{tx: signed_tx} -> signed_tx end)
   end
 

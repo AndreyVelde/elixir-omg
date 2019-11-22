@@ -70,12 +70,12 @@ defmodule OMG.Watcher.ExitProcessor.Canonicity do
   def get_ife_txs_with_competitors(%Core{in_flight_exits: ifes}, known_txs_by_input) do
     ifes
     |> Map.values()
-    |> Stream.map(fn ife -> {ife, DoubleSpend.find_competitor(known_txs_by_input, ife.tx)} end)
-    |> Stream.filter(fn {_ife, maybe_competitor} -> !is_nil(maybe_competitor) end)
-    |> Stream.filter(fn {ife, %DoubleSpend{known_tx: %KnownTx{utxo_pos: utxo_pos}}} ->
+    |> Enum.map(fn ife -> {ife, DoubleSpend.find_competitor(known_txs_by_input, ife.tx)} end)
+    |> Enum.filter(fn {_ife, maybe_competitor} -> !is_nil(maybe_competitor) end)
+    |> Enum.filter(fn {ife, %DoubleSpend{known_tx: %KnownTx{utxo_pos: utxo_pos}}} ->
       InFlightExitInfo.is_viable_competitor?(ife, utxo_pos)
     end)
-    |> Stream.map(fn {ife, _double_spend} -> Transaction.raw_txbytes(ife.tx) end)
+    |> Enum.map(fn {ife, _double_spend} -> Transaction.raw_txbytes(ife.tx) end)
     |> Enum.uniq()
     |> Enum.map(fn txbytes -> %Event.NonCanonicalIFE{txbytes: txbytes} end)
   end
@@ -85,8 +85,8 @@ defmodule OMG.Watcher.ExitProcessor.Canonicity do
   def get_invalid_ife_challenges(%Core{in_flight_exits: ifes}) do
     ifes
     |> Map.values()
-    |> Stream.filter(&InFlightExitInfo.is_invalidly_challenged?/1)
-    |> Stream.map(&Transaction.raw_txbytes(&1.tx))
+    |> Enum.filter(&InFlightExitInfo.is_invalidly_challenged?/1)
+    |> Enum.map(&Transaction.raw_txbytes(&1.tx))
     |> Enum.uniq()
     |> Enum.map(fn txbytes -> %Event.InvalidIFEChallenge{txbytes: txbytes} end)
   end

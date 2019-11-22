@@ -143,7 +143,8 @@ defmodule OMG.Watcher.ExitProcessor.InFlightExitInfo do
 
   defp prepare_tx(tx_bytes, tx_signatures) do
     with {:ok, raw_tx} <- Transaction.decode(tx_bytes) do
-      tx = %Transaction.Signed{raw_tx: raw_tx, sigs: tx_signatures}
+      # FIXME: too ugly - wrap things in a `new` function on the Signed struct
+      tx = %Transaction.Signed{raw_txhash: Transaction.raw_txhash(raw_tx), raw_tx: raw_tx, sigs: tx_signatures}
       {:ok, tx}
     end
   end
@@ -234,8 +235,16 @@ defmodule OMG.Watcher.ExitProcessor.InFlightExitInfo do
   end
 
   # NOTE: non-private because `CompetitorInfo` holds `Transaction.Signed` objects too
+  def from_db_signed_tx(%{raw_txhash: raw_txhash, raw_tx: raw_tx_map, sigs: sigs})
+      when is_binary(raw_txhash) and is_map(raw_tx_map) and is_list(sigs) do
+    value = %{raw_txhash: raw_txhash, raw_tx: from_db_raw_tx(raw_tx_map), sigs: sigs}
+    struct!(Transaction.Signed, value)
+  end
+
+  # in case hash is missing - fill it in
   def from_db_signed_tx(%{raw_tx: raw_tx_map, sigs: sigs}) when is_map(raw_tx_map) and is_list(sigs) do
-    value = %{raw_tx: from_db_raw_tx(raw_tx_map), sigs: sigs}
+    raw_tx = from_db_raw_tx(raw_tx_map)
+    value = %{raw_txhash: Transaction.raw_txhash(raw_tx), raw_tx: raw_tx, sigs: sigs}
     struct!(Transaction.Signed, value)
   end
 
@@ -245,8 +254,9 @@ defmodule OMG.Watcher.ExitProcessor.InFlightExitInfo do
     struct!(Transaction.Payment, value)
   end
 
-  def to_db_value(%Transaction.Signed{raw_tx: raw_tx, sigs: sigs}) when is_list(sigs) do
-    %{raw_tx: to_db_value(raw_tx), sigs: sigs}
+  def to_db_value(%Transaction.Signed{raw_txhash: raw_txhash, raw_tx: raw_tx, sigs: sigs})
+      when is_binary(raw_txhash) and is_list(sigs) do
+    %{raw_txhash: raw_txhash, raw_tx: to_db_value(raw_tx), sigs: sigs}
   end
 
   def to_db_value(%Transaction.Payment{inputs: inputs, outputs: outputs, metadata: metadata})

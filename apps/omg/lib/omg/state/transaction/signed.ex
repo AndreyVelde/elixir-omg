@@ -26,9 +26,10 @@ defmodule OMG.State.Transaction.Signed do
 
   @type tx_bytes() :: binary()
 
-  defstruct [:raw_tx, :sigs]
+  defstruct [:raw_txhash, :raw_tx, :sigs]
 
   @type t() :: %__MODULE__{
+          raw_txhash: Transaction.tx_hash(),
           raw_tx: Transaction.Protocol.t(),
           sigs: [Crypto.sig_t()]
         }
@@ -66,9 +67,9 @@ defmodule OMG.State.Transaction.Signed do
   """
   @spec get_witnesses(Transaction.Signed.t()) :: {:ok, list(Crypto.address_t())} | {:error, atom}
   def get_witnesses(%Transaction.Signed{raw_tx: raw_tx, sigs: raw_witnesses}) do
-    raw_txhash = TypedDataHash.hash_struct(raw_tx)
+    signhash = TypedDataHash.hash_struct(raw_tx)
 
-    with {:ok, reversed_witnesses} <- get_reversed_witnesses(raw_txhash, raw_tx, raw_witnesses),
+    with {:ok, reversed_witnesses} <- get_reversed_witnesses(signhash, raw_tx, raw_witnesses),
          do:
            {:ok,
             reversed_witnesses
@@ -77,13 +78,13 @@ defmodule OMG.State.Transaction.Signed do
             |> Enum.into(%{}, fn {witness, idx} -> {idx, witness} end)}
   end
 
-  defp get_reversed_witnesses(raw_txhash, raw_tx, raw_witnesses) do
+  defp get_reversed_witnesses(signhash, raw_tx, raw_witnesses) do
     raw_witnesses
-    |> Enum.reduce_while({:ok, []}, fn raw_witness, acc -> get_witness(raw_txhash, raw_tx, raw_witness, acc) end)
+    |> Enum.reduce_while({:ok, []}, fn raw_witness, acc -> get_witness(signhash, raw_tx, raw_witness, acc) end)
   end
 
-  defp get_witness(raw_txhash, raw_tx, raw_witness, {:ok, witnesses}) do
-    Witness.recover(raw_witness, raw_txhash, raw_tx)
+  defp get_witness(signhash, raw_tx, raw_witness, {:ok, witnesses}) do
+    Witness.recover(raw_witness, signhash, raw_tx)
     |> case do
       {:ok, witness} -> {:cont, {:ok, [witness | witnesses]}}
       error -> {:halt, error}
@@ -100,7 +101,7 @@ defmodule OMG.State.Transaction.Signed do
     with true <- is_list(raw_witnesses) || {:error, :malformed_witnesses},
          true <- Enum.all?(raw_witnesses, &Witness.valid?/1) || {:error, :malformed_witnesses},
          {:ok, raw_tx} <- Transaction.dispatching_reconstruct(typed_tx_rlp_decoded_chunks),
-         do: {:ok, %Transaction.Signed{raw_tx: raw_tx, sigs: raw_witnesses}}
+         do: {:ok, %Transaction.Signed{raw_tx: raw_tx, sigs: raw_witnesses, raw_txhash: Transaction.raw_txhash(raw_tx)}}
   end
 
   def reconstruct(_), do: {:error, :malformed_transaction}

@@ -62,7 +62,8 @@ defmodule OMG.Eth.MixProject do
             "plasma_framework/contracts/src/exits/utils/TxFinalizationVerifier.sol",
             "plasma_framework/contracts/src/exits/payment/PaymentExitGame.sol",
             "plasma_framework/contracts/src/exits/payment/spendingConditions/PaymentOutputToPaymentTxCondition.sol",
-            "plasma_framework/contracts/mocks/transactions/eip712Libs/PaymentEip712LibMock.sol"
+            "plasma_framework/contracts/mocks/transactions/eip712Libs/PaymentEip712LibMock.sol",
+            "plasma_framework/contracts/mocks/transactions/PaymentTransactionModelInspector.sol"
           ]),
         app: false,
         only: [:dev, :test]

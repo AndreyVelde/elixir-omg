@@ -35,6 +35,9 @@ defmodule Support.Conformance.Case do
 
     {:ok, _, signtest_addr} = Deployer.create_new("PaymentEip712LibMock", root_path, Eth.Encoding.from_hex(addr), [])
 
+    {:ok, _, tx_model_inspector_addr} =
+      Deployer.create_new("PaymentTransactionModelInspector", root_path, Eth.Encoding.from_hex(addr), [])
+
     # impose our testing signature contract wrapper (mock) as the validating contract, which normally would be
     # plasma framework
     :ok = Application.put_env(:omg_eth, :contract_addr, %{plasma_framework: Eth.Encoding.to_hex(signtest_addr)})
@@ -45,6 +48,7 @@ defmodule Support.Conformance.Case do
       exit_fn.()
     end)
 
-    [contract: signtest_addr]
+    # FIXME: consider splitting into 2 cases or moving the deployment elsewhere; refactor this code
+    [contract: signtest_addr, tx_model_inspector: tx_model_inspector_addr]
   end
 end

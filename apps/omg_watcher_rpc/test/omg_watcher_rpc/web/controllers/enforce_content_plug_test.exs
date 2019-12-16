@@ -17,18 +17,13 @@ defmodule OMG.WatcherRPC.Web.Controller.EnforceContentPlugTest do
   This test module tested header enforcing which we decided to remove in #759. Instead of removing it, it was reversed
   to show no header is required. We can remove this test as it basically shows HTTP protocol behavior.
   """
+  use OMG.WatcherRPC.Web.ConnCase, async: true
 
-  use ExUnitFixtures
-  use ExUnit.Case, async: false
-  use OMG.Fixtures
-  use OMG.WatcherInfo.Fixtures
-  use Plug.Test
   alias OMG.Utils.HttpRPC.Encoding
 
-  @tag fixtures: [:phoenix_ecto_sandbox]
   test "Content type header is no longer required" do
     no_account = Encoding.to_hex(<<0::160>>)
-    post = conn(:post, "account.get_balance", %{"address" => no_account})
+    post = build_conn(:post, "account.get_balance", %{"address" => no_account})
     response = OMG.WatcherRPC.Web.Endpoint.call(post, [])
 
     assert response.status == 200

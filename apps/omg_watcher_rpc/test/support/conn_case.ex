@@ -27,9 +27,10 @@ defmodule OMG.WatcherRPC.Web.ConnCase do
   of the test unless the test case is marked as async.
   """
 
+  use ExUnit.CaseTemplate
+
   alias Ecto.Adapters.SQL
   alias OMG.WatcherInfo
-  use ExUnit.CaseTemplate
 
   using do
     quote do

@@ -137,7 +137,6 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
              } = WatcherHelper.success?("transaction.get", %{"id" => txhash})
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox]
     test "returns error for non existing transaction" do
       txhash = <<0::256>> |> Encoding.to_hex()
 
@@ -148,7 +147,6 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
              } == WatcherHelper.no_success?("transaction.get", %{"id" => txhash})
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox]
     test "handles improper length of id parameter" do
       assert %{
                "object" => "error",
@@ -212,11 +210,10 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
              ] = transaction_all_result()
     end
 
-    @tag fixtures: [:blocks_inserter, :alice]
-    test "returns tx from a particular block", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice
-    } do
+    @tag fixtures: [:blocks_inserter]
+    test "returns tx from a particular block", %{blocks_inserter: blocks_inserter} do
+      alice = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000, [Test.create_recovered([{1, 0, 0, alice}], @eth, [{alice, 300}])]},
         {2000,
@@ -232,12 +229,13 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert [] = transaction_all_result(%{"blknum" => 3000})
     end
 
-    @tag fixtures: [:blocks_inserter, :alice, :bob]
+    @tag fixtures: [:blocks_inserter]
     test "returns tx from a particular block that contains requested address as the sender", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice,
-      bob: bob
+      blocks_inserter: blocks_inserter
     } do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000, [Test.create_recovered([{1, 0, 0, alice}], @eth, [{alice, 300}])]},
         {2000,
@@ -253,12 +251,13 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                transaction_all_result(%{"address" => address, "blknum" => 2000})
     end
 
-    @tag fixtures: [:blocks_inserter, :initial_deposits, :alice, :bob]
+    @tag fixtures: [:blocks_inserter, :initial_deposits]
     test "returns tx that contains requested address as the sender and not recipient", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice,
-      bob: bob
+      blocks_inserter: blocks_inserter
     } do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000,
          [
@@ -271,13 +270,14 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert [%{"block" => %{"blknum" => 1000}, "txindex" => 0}] = transaction_all_result(%{"address" => address})
     end
 
-    @tag fixtures: [:blocks_inserter, :initial_deposits, :alice, :bob, :carol]
+    @tag fixtures: [:blocks_inserter, :initial_deposits]
     test "returns only and all txs that match the address filtered", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice,
-      bob: bob,
-      carol: carol
+      blocks_inserter: blocks_inserter
     } do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+      carol = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000,
          [
@@ -296,12 +296,13 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert [] = transaction_all_result(%{"address" => carol_addr})
     end
 
-    @tag fixtures: [:blocks_inserter, :alice, :bob]
+    @tag fixtures: [:blocks_inserter]
     test "returns tx that contains requested address as the recipient and not sender", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice,
-      bob: bob
+      blocks_inserter: blocks_inserter
     } do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000,
          [
@@ -314,11 +315,12 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert [%{"block" => %{"blknum" => 1000}, "txindex" => 0}] = transaction_all_result(%{"address" => address})
     end
 
-    @tag fixtures: [:blocks_inserter, :alice]
+    @tag fixtures: [:blocks_inserter]
     test "returns tx that contains requested address as both sender & recipient is listed once", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice
+      blocks_inserter: blocks_inserter
     } do
+      alice = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000,
          [
@@ -331,11 +333,12 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert [%{"block" => %{"blknum" => 1000}, "txindex" => 0}] = transaction_all_result(%{"address" => address})
     end
 
-    @tag fixtures: [:blocks_inserter, :alice]
+    @tag fixtures: [:blocks_inserter]
     test "returns tx without inputs and contains requested address as recipient", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice
+      blocks_inserter: blocks_inserter
     } do
+      alice = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000,
          [
@@ -367,12 +370,13 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
   end
 
   describe "transactions pagination" do
-    @tag fixtures: [:alice, :bob, :initial_deposits, :blocks_inserter]
+    @tag fixtures: [:initial_deposits, :blocks_inserter]
     test "returns list of transactions limited by address", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice,
-      bob: bob
+      blocks_inserter: blocks_inserter
     } do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000,
          [
@@ -428,12 +432,13 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                transaction_all_with_paging(%{limit: 2, page: 3})
     end
 
-    @tag fixtures: [:alice, :bob, :initial_deposits, :blocks_inserter]
+    @tag fixtures: [:initial_deposits, :blocks_inserter]
     test "pagination is unstable - client libs needs to remove duplicates", %{
-      blocks_inserter: blocks_inserter,
-      alice: alice,
-      bob: bob
+      blocks_inserter: blocks_inserter
     } do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       blocks_inserter.([
         {1000,
          [
@@ -480,7 +485,6 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
   end
 
   describe "submitting binary-encoded transaction" do
-    @tag fixtures: [:phoenix_ecto_sandbox]
     test "handles incorrectly encoded parameter" do
       hex_without_0x = "5df13a6bf96dbcf6e66d8babd6b55bd40d64d4320c3b115364c6588fc18c2a21"
 
@@ -497,8 +501,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
              } == WatcherHelper.no_success?("transaction.submit", %{"transaction" => hex_without_0x})
     end
 
-    @tag fixtures: [:alice, :phoenix_ecto_sandbox]
-    test "provides stateless validation", %{alice: alice} do
+    test "provides stateless validation" do
+      alice = OMG.TestHelper.generate_entity()
+
       signed_bytes = Test.create_encoded([{1, 0, 0, alice}, {1, 0, 0, alice}], @eth, [{alice, 100}])
 
       assert %{
@@ -538,7 +543,7 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       }
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox, :typed_data_request]
+    @tag fixtures: [:typed_data_request]
     test "ensures all required fields are passed", %{typed_data_request: typed_data_request} do
       req_without_domain = Map.drop(typed_data_request, ["domain"])
 
@@ -583,7 +588,7 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
              } == WatcherHelper.no_success?("transaction.submit_typed", req_without_sigs)
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox, :typed_data_request]
+    @tag fixtures: [:typed_data_request]
     test "input & sigs count should match", %{typed_data_request: typed_data_request} do
       # Providing 2 non-zero inputs & 1 signature
       too_little_sigs =
@@ -626,10 +631,13 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       |> blocks_inserter.()
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos]
-    test "returns appropriate schema", %{alice: alice, bob: bob} do
+    @tag fixtures: [:more_utxos]
+    test "returns appropriate schema" do
       alias OMG.Utxo
       require Utxo
+
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
 
       alice_to_bob = 100
       fee = 5
@@ -680,9 +688,12 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert Utxo.position(blknum, txindex, oindex) |> Utxo.Position.encode() == utxo_pos
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos]
-    test "returns correctly formed transaction, identical with the verbose form", %{alice: alice, bob: bob} do
+    @tag fixtures: [:more_utxos]
+    test "returns correctly formed transaction, identical with the verbose form" do
       alias OMG.State.Transaction
+
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
 
       assert %{
                "result" => "complete",
@@ -717,9 +728,12 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert sign_hash_hex == verbose_tx |> OMG.TypedDataHash.hash_struct() |> Encoding.to_hex()
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos]
-    test "returns typed data in the form of request of typedDataSign", %{alice: alice, bob: bob} do
+    @tag fixtures: [:more_utxos]
+    test "returns typed data in the form of request of typedDataSign" do
       alias OMG.State.Transaction
+
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
 
       metadata_hex = Encoding.to_hex(<<123::256>>)
 
@@ -759,8 +773,11 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos, :blocks_inserter]
-    test "allows to pay single token tx", %{alice: alice, bob: bob, blocks_inserter: blocks_inserter} do
+    @tag fixtures: [:more_utxos, :blocks_inserter]
+    test "allows to pay single token tx", %{blocks_inserter: blocks_inserter} do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       alice_balance = balance_in_token(alice.addr, @eth)
       bob_balance = balance_in_token(bob.addr, @eth)
 
@@ -788,8 +805,11 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert bob_balance + payment == balance_in_token(bob.addr, @eth)
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos, :blocks_inserter]
-    test "advice on merge single token tx", %{alice: alice, bob: bob, blocks_inserter: blocks_inserter} do
+    @tag fixtures: [:more_utxos, :blocks_inserter]
+    test "advice on merge single token tx", %{blocks_inserter: blocks_inserter} do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       alice_balance = balance_in_token(alice.addr, @eth)
       max_spendable = max_amount_spendable_in_single_tx(alice.addr, @eth)
 
@@ -817,10 +837,11 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert max_amount_spendable_in_single_tx(alice.addr, @eth) >= payment
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos]
-    test "advice on merge does not merge single utxo", %{alice: alice, bob: bob} do
+    @tag fixtures: [:more_utxos]
+    test "advice on merge does not merge single utxo" do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
       max_spendable = max_amount_spendable_in_single_tx(alice.addr, @eth)
-
       payment = max_spendable + 1
 
       assert %{
@@ -841,8 +862,11 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert OMG.State.Transaction.Payment.max_inputs() == length(transaction["inputs"])
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos, :blocks_inserter]
-    test "allows to pay multi token tx", %{alice: alice, bob: bob, blocks_inserter: blocks_inserter} do
+    @tag fixtures: [:more_utxos, :blocks_inserter]
+    test "allows to pay multi token tx", %{blocks_inserter: blocks_inserter} do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       alice_eth = balance_in_token(alice.addr, @eth)
       alice_token = balance_in_token(alice.addr, @other_token)
       bob_eth = balance_in_token(bob.addr, @eth)
@@ -876,9 +900,12 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert bob_token + payment_token == balance_in_token(bob.addr, @other_token)
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos, :blocks_inserter]
+    @tag fixtures: [:more_utxos, :blocks_inserter]
     test "allows to pay other token tx with fee in different currency",
-         %{alice: alice, bob: bob, blocks_inserter: blocks_inserter} do
+         %{blocks_inserter: blocks_inserter} do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       alice_eth = balance_in_token(alice.addr, @eth)
       alice_token = balance_in_token(alice.addr, @other_token)
       bob_token = balance_in_token(bob.addr, @other_token)
@@ -908,8 +935,11 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert bob_token + payment_token == balance_in_token(bob.addr, @other_token)
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos, :blocks_inserter]
-    test "advice on merge multi token tx", %{alice: alice, bob: bob, blocks_inserter: blocks_inserter} do
+    @tag fixtures: [:more_utxos, :blocks_inserter]
+    test "advice on merge multi token tx", %{blocks_inserter: blocks_inserter} do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       alice_eth = balance_in_token(alice.addr, @eth)
       alice_token = balance_in_token(alice.addr, @other_token)
       bob_eth = balance_in_token(bob.addr, @eth)
@@ -946,8 +976,11 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
       assert max_amount_spendable_in_single_tx(alice.addr, @other_token) >= payment_token
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos]
-    test "insufficient funds returns custom error", %{alice: alice, bob: bob} do
+    @tag fixtures: [:more_utxos]
+    test "insufficient funds returns custom error" do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       balance = balance_in_token(alice.addr, @eth)
       payment = balance + 10
       fee = 5
@@ -970,8 +1003,11 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos]
-    test "unknown owner returns insufficient funds error", %{alice: alice, bob: bob} do
+    @tag fixtures: [:more_utxos]
+    test "unknown owner returns insufficient funds error" do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       assert 0 == balance_in_token(bob.addr, @eth)
       payment = 25
       fee = 5
@@ -994,8 +1030,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:alice, :more_utxos, :blocks_inserter]
-    test "does not return txbytes when spend owner is not provided", %{alice: alice} do
+    @tag fixtures: [:more_utxos, :blocks_inserter]
+    test "does not return txbytes when spend owner is not provided" do
+      alice = OMG.TestHelper.generate_entity()
       payment = 100
       fee = 5
       alice_addr = Encoding.to_hex(alice.addr)
@@ -1024,8 +1061,10 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:alice, :bob, :more_utxos]
-    test "total number of outputs exceeds allowed outputs returns custom error", %{alice: alice, bob: bob} do
+    @tag fixtures: [:more_utxos]
+    test "total number of outputs exceeds allowed outputs returns custom error" do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
       bob_addr = Encoding.to_hex(bob.addr)
 
       assert %{
@@ -1047,9 +1086,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:alice, :more_utxos]
-    test "transaction without payments that burns funds in fees is created correctly and incorrect on decoding",
-         %{alice: alice} do
+    @tag fixtures: [:more_utxos]
+    test "transaction without payments that burns funds in fees is created correctly and incorrect on decoding" do
+      alice = OMG.TestHelper.generate_entity()
       fee = 15
 
       assert %{
@@ -1110,8 +1149,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
   end
 
   describe "creating transaction: Validation" do
-    @tag fixtures: [:alice, :more_utxos]
-    test "empty transaction without payments list is not allowed", %{alice: alice} do
+    @tag fixtures: [:more_utxos]
+    test "empty transaction without payments list is not allowed" do
+      alice = OMG.TestHelper.generate_entity()
       alice_addr = Encoding.to_hex(alice.addr)
 
       assert %{
@@ -1125,8 +1165,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:alice, :more_utxos]
-    test "incorrect payment in payment list", %{alice: alice} do
+    @tag fixtures: [:more_utxos]
+    test "incorrect payment in payment list" do
+      alice = OMG.TestHelper.generate_entity()
       alice_addr = Encoding.to_hex(alice.addr)
 
       assert %{
@@ -1150,8 +1191,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:alice, :more_utxos]
-    test "too many payments attempted", %{alice: alice} do
+    @tag fixtures: [:more_utxos]
+    test "too many payments attempted" do
+      alice = OMG.TestHelper.generate_entity()
       alice_addr = Encoding.to_hex(alice.addr)
       too_many_payments = List.duplicate(%{"amount" => 1, "currency" => @other_token_hex, "owner" => alice_addr}, 5)
 
@@ -1173,7 +1215,6 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox]
     test "owner should be hex-encoded address" do
       assert %{
                "object" => "error",
@@ -1192,8 +1233,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox, :alice]
-    test "metadata should be hex-encoded hash", %{alice: alice} do
+    test "metadata should be hex-encoded hash" do
+      alice = OMG.TestHelper.generate_entity()
+
       assert %{
                "object" => "error",
                "code" => "operation:bad_request",
@@ -1216,8 +1258,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox, :alice]
-    test "payment should have valid fields", %{alice: alice} do
+    test "payment should have valid fields" do
+      alice = OMG.TestHelper.generate_entity()
+
       assert %{
                "object" => "error",
                "code" => "operation:bad_request",
@@ -1239,8 +1282,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox, :alice]
-    test "fee should have valid fields", %{alice: alice} do
+    test "fee should have valid fields" do
+      alice = OMG.TestHelper.generate_entity()
+
       assert %{
                "object" => "error",
                "code" => "operation:bad_request",
@@ -1262,8 +1306,9 @@ defmodule OMG.WatcherRPC.Web.Controller.TransactionTest do
                )
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox, :alice]
-    test "request's fee object is mandatory", %{alice: alice} do
+    test "request's fee object is mandatory" do
+      alice = OMG.TestHelper.generate_entity()
+
       assert %{
                "object" => "error",
                "code" => "operation:bad_request",

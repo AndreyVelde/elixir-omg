@@ -21,7 +21,6 @@ defmodule OMG.WatcherRPC.Web.Controller.FeeTest do
   alias Support.WatcherHelper
 
   describe "fees_all/2" do
-    @tag fixtures: [:phoenix_ecto_sandbox]
     test "fees.all endpoint rejects request with non list currencies" do
       assert %{
                "object" => "error",
@@ -35,7 +34,6 @@ defmodule OMG.WatcherRPC.Web.Controller.FeeTest do
              } = WatcherHelper.no_success?("/fees.all", %{currencies: "0x0000000000000000000000000000000000000000"})
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox]
     test "fees.all endpoint rejects request with non hex currencies" do
       assert %{
                "object" => "error",

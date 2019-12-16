@@ -24,3 +24,12 @@ Mix.Task.run("ecto.migrate", ~w(--quiet))
 
 {:ok, _} = Application.ensure_all_started(:briefly)
 {:ok, _} = Application.ensure_all_started(:erlexec)
+
+# Manual repo start up stays until `test --no-start` can be removed from top-level mix.exs
+{:ok, _pid} =
+  Supervisor.start_link(
+    [%{id: OMG.WatcherInfo.DB.Repo, start: {OMG.WatcherInfo.DB.Repo, :start_link, []}, type: :supervisor}],
+    strategy: :one_for_one
+  )
+
+Ecto.Adapters.SQL.Sandbox.mode(OMG.WatcherInfo.DB.Repo, :manual)

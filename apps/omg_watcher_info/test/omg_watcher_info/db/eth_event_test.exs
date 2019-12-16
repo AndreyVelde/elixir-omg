@@ -13,9 +13,7 @@
 # limitations under the License.
 
 defmodule OMG.WatcherInfo.DB.EthEventTest do
-  use ExUnitFixtures
-  use ExUnit.Case, async: false
-  use OMG.Fixtures
+  use ExUnit.Case, async: true
 
   alias OMG.Crypto
   alias OMG.Utxo
@@ -26,7 +24,11 @@ defmodule OMG.WatcherInfo.DB.EthEventTest do
 
   @eth OMG.Eth.RootChain.eth_pseudo_address()
 
-  @tag fixtures: [:phoenix_ecto_sandbox]
+  # TODO: To be replaced by a shared ExUnit.CaseTemplate.setup/0 once #1199 is merged.
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(DB.Repo)
+  end
+
   test "insert deposits: creates deposit event and utxo" do
     expected_root_chain_txnhash = Crypto.hash(<<1::256>>)
     expected_log_index = 0
@@ -114,8 +116,9 @@ defmodule OMG.WatcherInfo.DB.EthEventTest do
            ] = txoutput.ethevents
   end
 
-  @tag fixtures: [:phoenix_ecto_sandbox, :alice]
-  test "insert deposits: creates deposits and retrieves them by hash", %{alice: alice} do
+  test "insert deposits: creates deposits and retrieves them by hash" do
+    alice = OMG.TestHelper.generate_entity()
+
     expected_event_type = :deposit
     expected_owner = alice.addr
     expected_currency = @eth
@@ -197,7 +200,6 @@ defmodule OMG.WatcherInfo.DB.EthEventTest do
              end)
   end
 
-  @tag fixtures: [:phoenix_ecto_sandbox]
   test "insert exits: creates exit event and marks utxo as spent" do
     expected_owner = <<1::160>>
     expected_log_index = 0
@@ -239,8 +241,9 @@ defmodule OMG.WatcherInfo.DB.EthEventTest do
     assert Enum.empty?(DB.TxOutput.get_utxos(expected_owner))
   end
 
-  @tag fixtures: [:alice, :initial_blocks]
-  test "Writes of deposits and exits are idempotent", %{alice: alice} do
+  test "writes of deposits and exits are idempotent" do
+    alice = OMG.TestHelper.generate_entity()
+
     # try to insert again existing deposit (from initial_blocks)
     assert :ok =
              DB.EthEvent.insert_deposits!([

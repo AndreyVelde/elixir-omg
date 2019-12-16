@@ -13,55 +13,70 @@
 # limitations under the License.
 
 defmodule OMG.WatcherInfo.DB.TransactionTest do
-  @moduledoc """
-  Currently, this test focuses on testing behaviors not testable via Controllers.TransactionTest.
+  use ExUnit.Case, async: true
 
-  The reason is that we are treating the DB schema etc. as implementation detail. In case testing through controllers
-  becomes hard/slow or otherwise unreasnable, refactor these two kinds of tests appropriately
-  """
-
-  use ExUnitFixtures
-  use ExUnit.Case, async: false
-  use OMG.Fixtures
-  use Plug.Test
-
-  alias OMG.Utils.Paginator
-  alias OMG.Utxo
-  alias OMG.WatcherInfo.DB
-
-  require Utxo
   import ExUnit.CaptureLog
 
-  @tag fixtures: [:initial_blocks]
+  alias OMG.Utils.Paginator
+  alias OMG.WatcherInfo.DB
+
+  # TODO: To be replaced by a shared ExUnit.CaseTemplate.setup/0 once #1199 is merged.
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(DB.Repo)
+  end
+
+  # TODO: To be replaced by ExMachina.insert/2 once #1199 is merged.
+  defp insert(:block, params) do
+    DB.Block
+    |> struct(params)
+    |> DB.Repo.insert!()
+  end
+
+  # TODO: To be replaced by ExMachina.insert/2 once #1199 is merged.
+  defp insert(:transaction, params) do
+    DB.Transaction
+    |> struct(params)
+    |> DB.Repo.insert!()
+  end
+
   test "the associated block can be preloaded" do
+    _ = insert(:block, blknum: 1000, hash: "0x1000", eth_height: 1, timestamp: 100)
+    _ = insert(:transaction, txhash: <<1001>>, blknum: 1000, txindex: 1, txbytes: <<0>>)
+
     preloaded =
-      DB.Transaction.get_by_position(3000, 1)
+      1000
+      |> DB.Transaction.get_by_position(1)
       |> DB.Repo.preload(:block)
 
     assert %DB.Transaction{
-             blknum: 3000,
+             blknum: 1000,
              txindex: 1,
-             block: %DB.Block{blknum: 3000}
+             block: %DB.Block{blknum: 1000}
            } = preloaded
   end
 
-  @tag fixtures: [:initial_blocks]
-  test "gets all transactions from a block", %{initial_blocks: initial_blocks} do
-    # this test is here to ensure that calls coming from places other than `transaction` controllers are covered
-    [tx0, tx1] = DB.Transaction.get_by_blknum(3000)
+  test "gets all transactions from the given block number" do
+    # Block 1000
+    _ = insert(:block, blknum: 1000, hash: <<1000>>, eth_height: 1, timestamp: 100)
+    _ = insert(:transaction, txhash: <<1001>>, blknum: 1000, txindex: 1, txbytes: <<0>>)
 
-    tx_hashes =
-      initial_blocks
-      |> Enum.filter(&(elem(&1, 0) == 3000))
-      |> Enum.map(&elem(&1, 2))
+    # Block 2000
+    _ = insert(:block, blknum: 2000, hash: <<2000>>, eth_height: 2, timestamp: 200)
+    tx_1 = insert(:transaction, txhash: <<2001>>, blknum: 2000, txindex: 1, txbytes: <<0>>)
+    tx_2 = insert(:transaction, txhash: <<2002>>, blknum: 2000, txindex: 2, txbytes: <<0>>)
 
-    assert tx_hashes == [tx0, tx1] |> Enum.map(& &1.txhash)
+    transactions = DB.Transaction.get_by_blknum(2000)
 
-    assert [] == DB.Transaction.get_by_blknum(5000)
+    assert length(transactions) == 2
+    assert Enum.any?(transactions, fn t -> t.txhash == tx_1.txhash end)
+    assert Enum.any?(transactions, fn t -> t.txhash == tx_2.txhash end)
   end
 
-  @tag fixtures: [:initial_blocks]
-  test "passing constrains out of allowed takes no effect and print a warning" do
+  test "returns an empty list for when given an unknown block" do
+    assert DB.Transaction.get_by_blknum(5000) == []
+  end
+
+  test "passing unsupported constraints takes no effect and print a warning" do
     assert capture_log([level: :warn], fn ->
              DB.Transaction.get_by_filters([blknum: 2000, nothing: "there's no such thing"], %Paginator{})
            end) =~ "Constraint on :nothing does not exist in schema and was dropped from the query"

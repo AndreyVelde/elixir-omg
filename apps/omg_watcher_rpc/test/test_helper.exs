@@ -21,3 +21,5 @@ ExUnit.start()
 
 Mix.Task.run("ecto.create", ~w(--quiet))
 Mix.Task.run("ecto.migrate", ~w(--quiet))
+
+{:ok, _pid} = OMG.WatcherRPC.Web.Endpoint.start_link([])

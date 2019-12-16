@@ -28,8 +28,11 @@ defmodule OMG.WatcherRPC.Web.Controller.InFlightExitTest do
   @eth OMG.Eth.RootChain.eth_pseudo_address()
 
   describe "getting in-flight exits" do
-    @tag fixtures: [:web_endpoint, :db_initialized, :bob, :alice]
-    test "returns properly formatted in-flight exit data", %{bob: bob, alice: alice} do
+    @tag fixtures: [:db_initialized]
+    test "returns properly formatted in-flight exit data" do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       test_in_flight_exit_data = fn inputs, expected_input_txs ->
         in_flight_signed_txbytes = OMG.TestHelper.create_encoded(inputs, @eth, [{bob, 100}])
         # `2 + ` for prepending `0x` in HEX encoded binaries
@@ -90,8 +93,10 @@ defmodule OMG.WatcherRPC.Web.Controller.InFlightExitTest do
       ])
     end
 
-    @tag fixtures: [:web_endpoint, :db_initialized, :bob]
+    @tag fixtures: [:db_initialized]
     test "behaves well if input is not found", %{bob: bob} do
+      bob = OMG.TestHelper.generate_entity()
+
       in_flight_txbytes =
         [{3000, 1, 0, bob}]
         |> OMG.TestHelper.create_encoded(@eth, [{bob, 150}])
@@ -103,13 +108,11 @@ defmodule OMG.WatcherRPC.Web.Controller.InFlightExitTest do
              } = WatcherHelper.no_success?("/in_flight_exit.get_data", %{"txbytes" => in_flight_txbytes})
     end
 
-    @tag fixtures: [:web_endpoint]
     test "behaves well if input malformed" do
       assert %{"code" => "get_in_flight_exit:malformed_transaction"} =
                WatcherHelper.no_success?("/in_flight_exit.get_data", %{"txbytes" => "0x00"})
     end
 
-    @tag fixtures: [:web_endpoint]
     test "responds with error for malformed in-flight transaction bytes" do
       assert %{
                "code" => "operation:bad_request",

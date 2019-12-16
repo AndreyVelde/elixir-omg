@@ -114,9 +114,7 @@ defmodule OMG.WatcherInfo.Fixtures do
     |> blocks_inserter.()
   end
 
-  deffixture initial_deposits(alice, bob, phoenix_ecto_sandbox) do
-    :ok = phoenix_ecto_sandbox
-
+  deffixture initial_deposits(alice, bob) do
     deposits = [
       %{
         root_chain_txhash: Crypto.hash(<<1000::256>>),
@@ -141,9 +139,7 @@ defmodule OMG.WatcherInfo.Fixtures do
     :ok
   end
 
-  deffixture blocks_inserter(phoenix_ecto_sandbox) do
-    :ok = phoenix_ecto_sandbox
-
+  deffixture blocks_inserter do
     fn blocks -> blocks |> Enum.flat_map(&prepare_one_block/1) end
   end
 

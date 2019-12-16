@@ -13,19 +13,23 @@
 # limitations under the License.
 
 defmodule OMG.WatcherInfo.DB.TxOutputTest do
-  use ExUnitFixtures
-  use ExUnit.Case, async: false
-  use OMG.Fixtures
+  use ExUnit.Case, async: true
+
+  require OMG.Utxo
 
   alias OMG.Utxo
   alias OMG.WatcherInfo.DB
 
-  require Utxo
-
   @eth OMG.Eth.RootChain.eth_pseudo_address()
 
-  @tag fixtures: [:phoenix_ecto_sandbox, :alice]
-  test "transaction output schema handles big numbers properly", %{alice: alice} do
+  # TODO: To be replaced by a shared ExUnit.CaseTemplate.setup/0 once #1199 is merged.
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(DB.Repo)
+  end
+
+  test "transaction output schema handles big numbers properly" do
+    alice = OMG.TestHelper.generate_entity()
+
     power_of_2 = fn n -> :lists.duplicate(n, 2) |> Enum.reduce(&(&1 * &2)) end
     assert 16 == power_of_2.(4)
 

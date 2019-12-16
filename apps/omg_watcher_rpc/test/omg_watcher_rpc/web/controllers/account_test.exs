@@ -31,12 +31,18 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
   @other_token <<127::160>>
   @other_token_hex @other_token |> Encoding.to_hex()
 
-  @tag fixtures: [:alice, :bob, :blocks_inserter, :initial_blocks]
+  # TODO: To be replaced by a shared ExUnit.CaseTemplate.setup/0 once #1199 is merged.
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(DB.Repo)
+  end
+
+  @tag fixtures: [:blocks_inserter, :initial_blocks]
   test "Account balance groups account tokens and provide sum of available funds", %{
-    blocks_inserter: blocks_inserter,
-    alice: alice,
-    bob: bob
+    blocks_inserter: blocks_inserter
   } do
+    alice = OMG.TestHelper.generate_entity()
+    bob = OMG.TestHelper.generate_entity()
+
     assert [%{"currency" => @eth_hex, "amount" => 349}] == WatcherHelper.success?("account.get_balance", body_for(bob))
 
     # adds other token funds for alice to make more interesting
@@ -52,7 +58,6 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
            ] == data |> Enum.sort(&(Map.get(&1, "currency") <= Map.get(&2, "currency")))
   end
 
-  @tag fixtures: [:phoenix_ecto_sandbox]
   test "Account balance for non-existing account responds with empty array" do
     no_account = %{addr: <<0::160>>}
 
@@ -63,17 +68,16 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
     %{"address" => Encoding.to_hex(address)}
   end
 
-  @tag fixtures: [:initial_blocks, :alice]
-  test "returns last transactions that involve given address", %{
-    alice: alice
-  } do
+  @tag fixtures: [:initial_blocks]
+  test "returns last transactions that involve given address" do
+    alice = OMG.TestHelper.generate_entity()
+
     # refer to `/transaction.all` tests for more thorough cases, this is the same
     alice_addr = Encoding.to_hex(alice.addr)
 
     assert [_] = WatcherHelper.success?("account.get_transactions", %{"address" => alice_addr, "limit" => 1})
   end
 
-  @tag fixtures: [:phoenix_ecto_sandbox]
   test "account.get_balance handles improper type of parameter" do
     assert %{
              "object" => "error",
@@ -89,13 +93,17 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
   end
 
   describe "standard_exitable" do
-    @tag fixtures: [:phoenix_ecto_sandbox, :db_initialized, :carol]
-    test "no utxos are returned for non-existing addresses", %{carol: carol} do
+    @tag fixtures: [:db_initialized]
+    test "no utxos are returned for non-existing addresses" do
+      carol = OMG.TestHelper.generate_entity()
       assert [] == WatcherHelper.get_exitable_utxos(carol.addr)
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox, :db_initialized, :alice, :bob]
-    test "get_utxos and get_exitable_utxos have the same return format", %{alice: alice, bob: bob} do
+    @tag fixtures: [:db_initialized]
+    test "get_utxos and get_exitable_utxos have the same return format" do
+      alice = OMG.TestHelper.generate_entity()
+      bob = OMG.TestHelper.generate_entity()
+
       DB.EthEvent.insert_deposits!([
         %{
           root_chain_txhash: Crypto.hash(<<1000::256>>),
@@ -116,7 +124,6 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
       assert WatcherHelper.get_exitable_utxos(alice.addr) == WatcherHelper.get_utxos(alice.addr)
     end
 
-    @tag fixtures: [:phoenix_ecto_sandbox]
     test "account.get_exitable_utxos handles improper type of parameter" do
       assert %{
                "object" => "error",
@@ -132,13 +139,13 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
     end
   end
 
-  @tag fixtures: [:initial_blocks, :carol]
-  test "no utxos are returned for non-existing addresses", %{carol: carol} do
+  test "no utxos are returned for non-existing addresses" do
+    carol = OMG.TestHelper.generate_entity()
     assert [] == WatcherHelper.get_utxos(carol.addr)
   end
 
-  @tag fixtures: [:initial_blocks, :alice]
-  test "utxo from initial blocks are available", %{alice: alice} do
+  test "utxo from initial blocks are available" do
+    alice = OMG.TestHelper.generate_entity()
     alice_enc = alice.addr |> Encoding.to_hex()
 
     assert [
@@ -169,16 +176,20 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
            ] = WatcherHelper.get_utxos(alice.addr)
   end
 
-  @tag fixtures: [:initial_blocks, :alice]
-  test "encoded utxo positions are delivered", %{alice: alice} do
+  @tag fixtures: [:initial_blocks]
+  test "encoded utxo positions are delivered" do
+    alice = OMG.TestHelper.generate_entity()
+
     [%{"utxo_pos" => utxo_pos, "blknum" => blknum, "txindex" => txindex, "oindex" => oindex} | _] =
       WatcherHelper.get_utxos(alice.addr)
 
     assert Utxo.position(^blknum, ^txindex, ^oindex) = utxo_pos |> Utxo.Position.decode!()
   end
 
-  @tag fixtures: [:initial_blocks, :bob, :carol]
-  test "spent utxos are moved to new owner", %{bob: bob, carol: carol} do
+  @tag fixtures: [:initial_blocks]
+  test "spent utxos are moved to new owner" do
+    bob = OMG.TestHelper.generate_entity()
+    carol = OMG.TestHelper.generate_entity()
     [] = WatcherHelper.get_utxos(carol.addr)
 
     # bob spends his utxo to carol
@@ -201,8 +212,9 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
            ] = WatcherHelper.get_utxos(carol.addr)
   end
 
-  @tag fixtures: [:initial_blocks, :bob]
-  test "unspent deposits are a part of utxo set", %{bob: bob} do
+  @tag fixtures: [:initial_blocks]
+  test "unspent deposits are a part of utxo set" do
+    bob = OMG.TestHelper.generate_entity()
     bob_enc = bob.addr |> Encoding.to_hex()
     deposited_utxo = bob.addr |> WatcherHelper.get_utxos() |> Enum.find(&(&1["blknum"] < 1000))
 
@@ -216,15 +228,18 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
            } = deposited_utxo
   end
 
-  @tag fixtures: [:initial_blocks, :alice]
-  test "spent deposits are not a part of utxo set", %{alice: alice} do
+  @tag fixtures: [:initial_blocks]
+  test "spent deposits are not a part of utxo set" do
+    alice = OMG.TestHelper.generate_entity()
     assert utxos = WatcherHelper.get_utxos(alice.addr)
 
     assert [] = utxos |> Enum.filter(&(&1["blknum"] < 1000))
   end
 
-  @tag fixtures: [:initial_blocks, :carol, :bob]
-  test "deposits are spent", %{carol: carol, bob: bob} do
+  @tag fixtures: [:initial_blocks]
+  test "deposits are spent" do
+    bob = OMG.TestHelper.generate_entity()
+    carol = OMG.TestHelper.generate_entity()
     assert [] = WatcherHelper.get_utxos(carol.addr)
 
     assert utxos = WatcherHelper.get_utxos(bob.addr)
@@ -266,7 +281,6 @@ defmodule OMG.WatcherRPC.Web.Controller.AccountTest do
            ] = WatcherHelper.get_utxos(carol.addr)
   end
 
-  @tag fixtures: [:phoenix_ecto_sandbox]
   test "account.get_utxos handles improper type of parameter" do
     assert %{
              "object" => "error",

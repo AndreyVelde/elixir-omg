@@ -19,7 +19,6 @@ defmodule OMG.WatcherRPC.Web.Controller.FallbackTest do
 
   alias Support.WatcherHelper
 
-  @tag fixtures: [:phoenix_ecto_sandbox]
   test "returns error for non existing method" do
     assert %{
              "object" => "error",

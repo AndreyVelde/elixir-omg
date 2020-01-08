@@ -45,9 +45,7 @@ defmodule OMG.Utxo.Position do
 
   @doc """
   Encode an input utxo position into an integer value.
-
   ## Examples
-
       iex> utxo_pos = {:utxo_position, 4, 5, 1}
       iex> OMG.Utxo.Position.encode(utxo_pos)
       4_000_050_001
@@ -58,13 +56,10 @@ defmodule OMG.Utxo.Position do
 
   @doc """
   Decode an integer or binary into a utxo position tuple.
-
   ## Examples
-
       # Decodes an integer encoded utxo position.
       iex> OMG.Utxo.Position.decode!(4_000_050_001)
       {:utxo_position, 4, 5, 1}
-
       # Decode a binary encoded utxo position.
       iex> encoded_pos = <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 238, 107, 235, 81>>
       iex> OMG.Utxo.Position.decode!(encoded_pos)
@@ -78,28 +73,23 @@ defmodule OMG.Utxo.Position do
 
   @doc """
   Decode an integer or binary into a utxo position tuple.
-
   ## Examples
-
       # Decode an integer encoded utxo position.
       iex> OMG.Utxo.Position.decode(4_000_050_001)
       {:ok, {:utxo_position, 4, 5, 1}}
-
       # Returns an error if the value is too low.
       iex> OMG.Utxo.Position.decode(0)
       {:error, :encoded_utxo_position_too_low}
-
       iex> OMG.Utxo.Position.decode(-1)
       {:error, :encoded_utxo_position_too_low}
-
       # Decode a binary encoded utxo position.
       iex> encoded_pos = <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 238, 107, 235, 81>>
       iex> OMG.Utxo.Position.decode(encoded_pos)
       {:ok, {:utxo_position, 4, 5, 1}}
   """
-  @spec decode(binary()) :: {:ok, t()} | {:error, :error_decoding_utxo_position}
-  def decode(encoded) when is_number(encoded) and encoded < 0, do: {:error, :error_decoding_utxo_position}
-  def decode(encoded) when is_integer(encoded) and encoded >= 0, do: do_decode(encoded)
+  @spec decode(binary()) :: {:ok, t()} | {:error, :encoded_utxo_position_too_low}
+  def decode(encoded) when is_number(encoded) and encoded <= 0, do: {:error, :encoded_utxo_position_too_low}
+  def decode(encoded) when is_integer(encoded) and encoded > 0, do: do_decode(encoded)
   def decode(encoded) when is_binary(encoded) and byte_size(encoded) == 32, do: do_decode(encoded)
 
   # TODO(achiurizo)
@@ -107,9 +97,7 @@ defmodule OMG.Utxo.Position do
   # this was merged from a previous module where one code path still wants the 3 item tuple.
   @doc """
   Convert a utxo position into the input db key tuple.
-
   ## Examples
-
       iex> utxo_pos = {:utxo_position, 1, 2, 3}
       iex> OMG.Utxo.Position.to_input_db_key(utxo_pos)
       {:input_pointer, 1, {1, 2, 3}}
@@ -120,9 +108,7 @@ defmodule OMG.Utxo.Position do
 
   @doc """
   Convert a utxo position into the db key tuple. (legacy?)
-
   ## Examples
-
       iex> utxo_pos = {:utxo_position, 1, 2, 3}
       iex> OMG.Utxo.Position.to_db_key(utxo_pos)
       {1, 2, 3}
@@ -134,14 +120,11 @@ defmodule OMG.Utxo.Position do
   # Refactor so we only have one db key type.
   @doc """
   Convert an input db key tuple into a utxo position.
-
   ## Examples
-
       # Convert an input db key tuple into a utxo position.
       iex> input_db_key = {:input_pointer, 1, {1, 2, 3}}
       iex> OMG.Utxo.Position.from_db_key(input_db_key)
       {:utxo_position, 1, 2, 3}
-
       # Convert a 'legacy' db key tuple into a utxo position
       iex> legacy_input_db_key = {1, 2, 3}
       iex> OMG.Utxo.Position.from_db_key(legacy_input_db_key)
@@ -157,9 +140,7 @@ defmodule OMG.Utxo.Position do
   # better name for this function, like to_rlp/1.
   @doc """
   Returns the rlp-encodable data for the given utxo position.
-
   ## Examples
-
       iex> utxo_pos = {:utxo_position, 1, 2, 3}
       iex> OMG.Utxo.Position.get_data_for_rlp(utxo_pos)
       <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

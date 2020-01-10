@@ -37,8 +37,31 @@ defmodule OMG.State.Transaction.Validator do
           | :unauthorized_spend
           | :utxo_not_found
 
+  @type fee_claim_error :: :claiming_unsupported_token | :claiming_more_than_collected
+
+  @type process_error :: exec_error | fee_claim_error
+
+  @doc """
+  can process transaction?
+  """
+  @spec can_process(state :: Core.t(), tx :: Transaction.Recovered.t(), fees :: Fees.optional_fee_t()) ::
+          {:ok, :apply_spend, map()} | {:ok, :claim_fees, map()} | {{:error, process_error()}, Core.t()}
+  def can_process(
+        %Core{} = state,
+        %Transaction.Recovered{signed_tx: %{raw_tx: raw_tx}} = tx,
+        fees
+      ) do
+    case raw_tx do
+      %Transaction.Payment{} ->
+        can_apply_spend(state, tx, fees)
+
+      %Transaction.FeeTokenClaim{} ->
+        can_claim_fees(state, tx, fees)
+    end
+  end
+
   @spec can_apply_spend(state :: Core.t(), tx :: Transaction.Recovered.t(), fees :: Fees.optional_fee_t()) ::
-          true | {{:error, exec_error()}, Core.t()}
+          {:ok, :apply_spend, map()} | {{:error, exec_error()}, Core.t()}
   def can_apply_spend(
         %Core{utxos: utxos} = state,
         %Transaction.Recovered{signed_tx: %{raw_tx: raw_tx}, witnesses: witnesses} = tx,
@@ -46,13 +69,31 @@ defmodule OMG.State.Transaction.Validator do
       ) do
     inputs = Transaction.get_inputs(tx)
 
-    with :ok <- validate_block_size(state),
+    with true <- not state.fee_claiming_started || {:error, :payments_rejected_during_fee_claiming},
+         :ok <- validate_block_size(state),
          :ok <- inputs_not_from_future_block?(state, inputs),
          {:ok, outputs_spent} <- UtxoSet.get_by_inputs(utxos, inputs),
          :ok <- authorized?(outputs_spent, witnesses),
          {:ok, implicit_paid_fee_by_currency} <- Transaction.Protocol.can_apply?(raw_tx, outputs_spent),
          true <- Fees.covered?(implicit_paid_fee_by_currency, fees) || {:error, :fees_not_covered} do
-      {:ok, Fees.filter_fee_tokens(implicit_paid_fee_by_currency, fees)}
+      {:ok, :apply_spend, Fees.filter_fee_tokens(implicit_paid_fee_by_currency, fees)}
+    else
+      {:error, _reason} = error -> {error, state}
+    end
+  end
+
+  # FIXME: handle :no_fees_required case
+  @spec can_claim_fees(Core.t(), Transaction.Recovered.t(), fees :: Fees.optional_fee_t()) ::
+          {:ok, :claim_fees} | {{:error, fee_claim_error()}, Core.t()}
+  def can_claim_fees(
+        %Core{fees_paid: fees_paid} = state,
+        %Transaction.Recovered{signed_tx: %{raw_tx: fee_tx}},
+        fees
+      ) do
+    with supported_fee_tokens = Map.keys(fees),
+         fees_paid = Map.take(fees_paid, supported_fee_tokens),
+         {:ok, claimed_fee_token} <- Transaction.Protocol.can_apply?(fee_tx, fees_paid) do
+      {:ok, :claim_fees, claimed_fee_token}
     else
       {:error, _reason} = error -> {error, state}
     end

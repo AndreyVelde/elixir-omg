@@ -496,6 +496,7 @@ jobs:
             sudo apt-get update &&
             sudo apt-get install esl-erlang=1:21.3.8.10-1 elixir=1.8.2-1 &&
             sudo apt-get install -y erlang-os-mon &&
+            sudo apt-get install -y erlang-parsetools &&
             ./bin/setup &&
             make deps-elixir-omg &&
             make start-child_chain OVERRIDING_START=start &&

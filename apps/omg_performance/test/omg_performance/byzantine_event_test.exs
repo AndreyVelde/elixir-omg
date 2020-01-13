@@ -25,6 +25,7 @@ defmodule OMG.Performance.ByzantineEventsTest do
   use OMG.Performance
 
   @moduletag :integration
+  @moduletag :common
   @moduletag timeout: 180_000
 
   # NOTE: still bound to fixtures :(, because of the child chain setup, but this will go eventually, so leaving as is

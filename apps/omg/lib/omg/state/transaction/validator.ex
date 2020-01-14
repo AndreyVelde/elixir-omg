@@ -85,6 +85,9 @@ defmodule OMG.State.Transaction.Validator do
   # FIXME: handle :no_fees_required case
   @spec can_claim_fees(Core.t(), Transaction.Recovered.t(), fees :: Fees.optional_fee_t()) ::
           {:ok, :claim_fees} | {{:error, fee_claim_error()}, Core.t()}
+  def can_claim_fees(%Core{} = state, %Transaction.Recovered{}, :no_fees_required),
+    do: {{:error, :cannot_claim_when_fees_not_collected}, state}
+
   def can_claim_fees(
         %Core{fees_paid: fees_paid} = state,
         %Transaction.Recovered{signed_tx: %{raw_tx: fee_tx}},

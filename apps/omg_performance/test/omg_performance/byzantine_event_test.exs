@@ -17,6 +17,14 @@ defmodule OMG.Performance.ByzantineEventsTest do
   Simple smoke testing of the performance test
   """
 
+  # FIXME: this solves the String.to_existing_atom problem, but why wouldn't those particular atoms be loaded - revisit
+  @on_load :load_atoms
+
+  def load_atoms() do
+    Code.ensure_loaded(OMG.Watcher.API.Status)
+    :ok
+  end
+
   use ExUnitFixtures
   use ExUnit.Case, async: false
   use OMG.ChildChain.Integration.Fixtures

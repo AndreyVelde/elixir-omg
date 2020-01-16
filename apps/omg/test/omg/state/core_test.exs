@@ -909,7 +909,7 @@ defmodule OMG.State.CoreTest do
         |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{bob, 4}, {alice, 3}]), fees)
         |> success?()
 
-      {:ok, {block, _dbupdates}, state} = form_block_check(state, fees)
+      {:ok, {block, _dbupdates}, state} = form_block_check(state)
 
       assert [payment_txbytes, fee_txbytes] = block.transactions
 
@@ -924,7 +924,7 @@ defmodule OMG.State.CoreTest do
     end
 
     @tag fixtures: [:alice, :bob, :state_empty]
-    test "no fee txs appended when fees aren't required", %{alice: alice, bob: bob, state_empty: state} do
+    test "fee txs appended even when fees aren't required", %{alice: alice, bob: bob, state_empty: state} do
       fees = :no_fees_required
 
       state =
@@ -933,9 +933,9 @@ defmodule OMG.State.CoreTest do
         |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{bob, 4}, {alice, 3}]), fees)
         |> success?()
 
-      {:ok, {block, _dbupdates}, state} = form_block_check(state, fees)
+      {:ok, {block, _dbupdates}, state} = form_block_check(state)
 
-      assert [_payment_txbytes] = block.transactions
+      assert 2 = length(block.transactions)
     end
 
     @tag fixtures: [:alice, :bob, :state_empty]
@@ -949,7 +949,7 @@ defmodule OMG.State.CoreTest do
         |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, 5}]), fees)
         |> success?()
 
-      {:ok, {block, _dbupdates}, state} = form_block_check(state, fees)
+      {:ok, {block, _dbupdates}, state} = form_block_check(state)
 
       state
       |> Core.exec(create_recovered([{1000, 1, 0, fee_claimer}], @eth, [{alice, 5}]), :no_fees_required)
@@ -962,7 +962,7 @@ defmodule OMG.State.CoreTest do
 
       fee_tx =
         %Transaction.Signed{
-          raw_tx: Transaction.FeeTokenClaim.new(1000, {state.fee_claimer_address, @eth, 2}),
+          raw_tx: Transaction.FeeTokenClaim.new(1000, {state.fee_claimer_address, @eth, 5}),
           sigs: []
         }
         |> Transaction.Signed.encode()
@@ -987,7 +987,7 @@ defmodule OMG.State.CoreTest do
 
       fee_tx =
         %Transaction.Signed{
-          raw_tx: Transaction.FeeTokenClaim.new(1000, {state.fee_claimer_address, @eth, 2}),
+          raw_tx: Transaction.FeeTokenClaim.new(1000, {state.fee_claimer_address, @eth, 3}),
           sigs: []
         }
         |> Transaction.Signed.encode()
@@ -996,14 +996,14 @@ defmodule OMG.State.CoreTest do
       state
       |> do_deposit(alice, %{amount: 10, currency: @eth, blknum: 1})
       |> do_deposit(alice, %{amount: 10, currency: @eth, blknum: 2})
-      |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, 5}]), fees)
+      |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, 7}]), fees)
       |> success?()
       # fees from 1st tx are available to claim
       |> Core.exec(fee_tx, fees)
       |> success?()
       # at this point no other payment can be processed
       |> Core.exec(fee_tx, fees)
-      |> fail?(:claiming_unsupported_token)
+      |> fail?(:claimed_collected_amounts_mismatch)
     end
 
     @tag fixtures: [:alice, :state_empty]
@@ -1026,11 +1026,11 @@ defmodule OMG.State.CoreTest do
       |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, available - fee_amount}]), fees)
       |> success?()
       |> Core.exec(fee_tx, fees)
-      |> fail?(:claiming_more_than_collected)
+      |> fail?(:claimed_collected_amounts_mismatch)
     end
 
     @tag fixtures: [:alice, :state_empty]
-    test "claiming less than collected isn't prohibited", %{alice: alice, state_empty: state} do
+    test "cannot claim less than collected", %{alice: alice, state_empty: state} do
       available = 10
       fee_amount = 2
       fees = %{@eth => %{amount: fee_amount}}
@@ -1048,37 +1048,7 @@ defmodule OMG.State.CoreTest do
       |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, available - fee_amount}]), fees)
       |> success?()
       |> Core.exec(fee_tx, fees)
-      |> success?()
-    end
-
-    @tag fixtures: [:alice, :state_empty]
-    test "not all tokens has to be claimed", %{alice: alice, state_empty: state} do
-      # This test handles the scenario when a token was removed from fee specs but ch-ch already collected fees in
-      # this token. We cannot claim this fees because Watchers will find it malicious.
-      fee_claimer = state.fee_claimer_address
-      fees = %{@eth => %{amount: 1}, @not_eth => %{amount: 3}}
-
-      state =
-        state
-        |> do_deposit(alice, %{amount: 10, currency: @eth, blknum: 1})
-        |> do_deposit(alice, %{amount: 10, currency: @not_eth, blknum: 2})
-        |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, 9}]), fees)
-        |> success?()
-        |> Core.exec(create_recovered([{2, 0, 0, alice}], @not_eth, [{alice, 7}]), fees)
-        |> success?()
-
-      # at the time block is formed only Eth is supported fee currency
-      {:ok, {block, _dbupdates}, state} = form_block_check(state, %{@eth => %{amount: 1}})
-
-      assert 3 == length(block.transactions)
-
-      # it's too low-level for the test, but how to test this properly
-      assert [
-               {
-                 Utxo.position(1000, 2, 0),
-                 %Utxo{output: %OMG.Output{currency: @eth, owner: ^fee_claimer}}
-               }
-             ] = Enum.filter(state.utxos, fn {_pos, %Utxo{output: utxo}} -> utxo.owner == fee_claimer end)
+      |> fail?(:claimed_collected_amounts_mismatch)
     end
 
     @tag fixtures: [:alice, :state_empty]
@@ -1088,7 +1058,7 @@ defmodule OMG.State.CoreTest do
 
       fee_tx =
         %Transaction.Signed{
-          raw_tx: Transaction.FeeTokenClaim.new(1000, {state.fee_claimer_address, @eth, 2}),
+          raw_tx: Transaction.FeeTokenClaim.new(1000, {state.fee_claimer_address, @eth, 3}),
           sigs: []
         }
         |> Transaction.Signed.encode()
@@ -1097,7 +1067,7 @@ defmodule OMG.State.CoreTest do
       state =
         state
         |> do_deposit(alice, %{amount: 10, currency: @eth, blknum: 1})
-        |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, 5}]), fees)
+        |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, 7}]), fees)
         |> success?()
 
       # now it's possible to claim Eth fee (note: no state modification)
@@ -1106,30 +1076,12 @@ defmodule OMG.State.CoreTest do
       |> success?()
 
       # block is formed without claiming fees
-      {:ok, {block, _dbupdates}, new_state} = form_block_check(state, :no_fees_required)
+      {:ok, {block, _dbupdates}, new_state} = form_block_check(state)
 
       # it's no longer possible to claim fees
       new_state
       |> Core.exec(fee_tx, fees)
-      |> fail?(:claiming_unsupported_token)
-    end
-
-    @tag fixtures: [:alice, :state_empty]
-    test "fee token change does not affect form block", %{alice: alice, state_empty: state} do
-      fee_claimer = state.fee_claimer_address
-      fees = %{@eth => %{amount: 1}}
-
-      state =
-        state
-        |> do_deposit(alice, %{amount: 10, currency: @eth, blknum: 1})
-        |> Core.exec(create_recovered([{1, 0, 0, alice}], @eth, [{alice, 9}]), fees)
-        |> success?()
-
-      # just before block forming new fee spec arrives
-      new_fees = %{@not_eth => %{amount: 9}}
-      {:ok, {block, _dbupdates}, state} = form_block_check(state, new_fees)
-
-      assert 1 == length(block.transactions)
+      |> fail?(:claimed_collected_amounts_mismatch)
     end
   end
 
@@ -1159,8 +1111,8 @@ defmodule OMG.State.CoreTest do
 
   # used to check the invariants in form_block
   # use this throughout this test module instead of Core.form_block
-  defp form_block_check(state, fees \\ :no_fees_required) do
-    {_, {block, db_updates}, _} = result = Core.form_block(@interval, state, fees)
+  defp form_block_check(state) do
+    {_, {block, db_updates}, _} = result = Core.form_block(@interval, state)
 
     # check if block returned and sent to db_updates is the same
     assert Enum.member?(db_updates, {:put, :block, Block.to_db_value(block)})

@@ -287,7 +287,7 @@ docker-push: docker
 
 ###OTHER
 docker-start-cluster:
-	SNAPSHOT=SNAPSHOT_MIX_EXIT_PERIOD_SECONDS_120 make init_test && \
+	SNAPSHOT=SNAPSHOT_MIX_EXIT_PERIOD_SECONDS_20 make init_test && \
 	docker-compose build --no-cache && docker-compose up
 
 docker-stop-cluster:
@@ -340,7 +340,7 @@ docker-remote-childchain:
 ### barebone stuff
 ###
 start-services:
-	SNAPSHOT=SNAPSHOT_MIX_EXIT_PERIOD_SECONDS_120 make init_test && \
+	SNAPSHOT=SNAPSHOT_MIX_EXIT_PERIOD_SECONDS_20 make init_test && \
 	docker-compose up geth postgres
 
 start-child_chain:

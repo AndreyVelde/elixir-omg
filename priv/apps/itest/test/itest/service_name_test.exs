@@ -21,11 +21,7 @@ defmodule ServiceNameTests do
     {:ok, Map.put(state, :service_response, body)}
   end
 
-<<<<<<< HEAD
   defthen ~r/^Operator can read it's service name as "(?<service_name>[^"]+)"$/, %{service_name: service_name}, state do
-=======
-  defthen ~r/^Operator can read it's service name as "(?<service_name>[^"]+)"/, %{service_name: service_name}, state do
->>>>>>> feature: introduce cabbage
     case service_name do
       "watcher_info" ->
         # TODO remove when implemented
